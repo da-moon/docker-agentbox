@@ -3,7 +3,7 @@
 FROM nixos/nix:2.34.7@sha256:bf1d938835ab96312f098fa6c2e9cab367728e0aad0646ee3e02a787c80d8fb8
 
 ENV NIX_CONFIG="experimental-features = nix-command flakes"
-ENV PATH="/nix/var/nix/profiles/agentbox/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin"
+ENV PATH="/home/agent/.local/state/nix/profiles/agentbox/bin:/nix/var/nix/profiles/agentbox/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin"
 
 WORKDIR /tmp/agentbox-build
 
@@ -13,7 +13,11 @@ COPY nix ./nix
 RUN nix profile add \
       --profile /nix/var/nix/profiles/agentbox \
       --no-write-lock-file \
-      .#agentbox-env \
+      .#agentbox-base \
+    && mkdir -p /opt/agentbox \
+    && cp -a flake.nix flake.lock /opt/agentbox/ \
+    && cp -a nix /opt/agentbox/nix \
+    && chmod -R a+rX /opt/agentbox \
     && rm -rf /tmp/agentbox-build /root/.cache/nix
 
 RUN for account_file in passwd group shadow gshadow; do \

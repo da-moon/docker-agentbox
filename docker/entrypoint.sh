@@ -81,15 +81,28 @@ fi
 
 export NIX_REMOTE=daemon
 
+install_extras() {
+  su-exec "$1" env HOME="$2" NIX_REMOTE=daemon sh -c '
+    mkdir -p "$HOME/.local/state/nix/profiles"
+    nix profile install \
+      --profile "$HOME/.local/state/nix/profiles/agentbox" \
+      --no-write-lock-file \
+      path:/opt/agentbox#agentbox-extras
+  ' || echo "agentbox: extras install failed (continuing)" >&2
+}
+
 if [ "$run_as_root" = "1" ]; then
   export HOME=/root
   export USER=root
   export LOGNAME=root
+  export PATH="/root/.local/state/nix/profiles/agentbox/bin:$PATH"
+  install_extras "0:0" /root
   exec tini -- "$@"
 fi
 
 export HOME="$AGENT_HOME"
 export USER="$AGENT_USER"
 export LOGNAME="$AGENT_USER"
+install_extras "${requested_uid}:${requested_gid}" "$AGENT_HOME"
 
 exec tini -- su-exec "${requested_uid}:${requested_gid}" "$@"
