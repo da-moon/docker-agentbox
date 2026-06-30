@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "${script_dir}/.." && pwd)"
+# shellcheck source=scripts/lib/update-common.sh
+source "${script_dir}/lib/update-common.sh"
+
+readonly package_file="${repo_root}/nix/packages/fff-mcp.nix"
+readonly releases_api="https://api.github.com/repos/dmtrKovalenko/fff.nvim/releases/latest"
+readonly download_base_url="https://github.com/dmtrKovalenko/fff.nvim/releases/download"
+
+target_version=""
+check_only=false
+rehash=false
+no_build=false
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/update-fff-mcp.sh [OPTIONS]
+
+Options:
+  --version VERSION  Update to a specific version instead of latest
+  --check            Exit 1 when a newer version is available
+  --rehash           Recompute hashes for the current or selected version
+  --no-build         Skip package build verification
+  --help             Show this help
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --version)
+      [ "$#" -ge 2 ] || {
+        log_error "--version requires a value"
+        exit 2
+      }
+      target_version="$2"
+      shift 2
+      ;;
+    --check)
+      check_only=true
+      shift
+      ;;
+    --rehash)
+      rehash=true
+      shift
+      ;;
+    --no-build)
+      no_build=true
+      shift
+      ;;
+    --help)
+      usage
+      exit 0
+      ;;
+    *)
+      log_error "Unknown option: $1"
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+require_commands curl jq nix sed
+
+current_version="$(read_nix_version "$package_file")"
+[ -n "$current_version" ] || {
+  log_error "Could not read the current fff-mcp version"
+  exit 2
+}
+
+if [ -n "$target_version" ]; then
+  latest_version="$target_version"
+else
+  latest_tag="$(curl -fsSL "$releases_api" | jq -er '.tag_name')"
+  latest_version="${latest_tag#v}"
+fi
+release_tag="v${latest_version}"
+
+if [ "$check_only" = true ]; then
+  if [ "$current_version" = "$latest_version" ]; then
+    log_info "fff-mcp is current (${current_version})"
+    exit 0
+  fi
+  log_warn "fff-mcp update available: ${current_version} -> ${latest_version}"
+  exit 1
+fi
+
+if [ "$current_version" = "$latest_version" ] && [ "$rehash" = false ]; then
+  log_info "fff-mcp is already at ${current_version}"
+  exit 0
+fi
+
+x86_url="${download_base_url}/${release_tag}/fff-mcp-x86_64-unknown-linux-musl"
+arm_url="${download_base_url}/${release_tag}/fff-mcp-aarch64-unknown-linux-musl"
+x86_hash="$(prefetch_sri "$x86_url")"
+arm_hash="$(prefetch_sri "$arm_url")"
+
+backup="$(mktemp)"
+cp "$package_file" "$backup"
+committed=false
+cleanup() {
+  if [ "$committed" = false ]; then
+    cp "$backup" "$package_file"
+  fi
+  rm -f "$backup"
+}
+trap cleanup EXIT
+
+replace_nix_version "$package_file" "$latest_version"
+sed -i -E \
+  '/aarch64-linux = \{/,/};/ s|^([[:space:]]*hash = ")[^"]*(";)|\1'"${arm_hash}"'\2|' \
+  "$package_file"
+sed -i -E \
+  '/x86_64-linux = \{/,/};/ s|^([[:space:]]*hash = ")[^"]*(";)|\1'"${x86_hash}"'\2|' \
+  "$package_file"
+
+if [ "$no_build" = false ]; then
+  verify_package_build "$repo_root" fff-mcp
+fi
+
+committed=true
+log_info "Updated fff-mcp: ${current_version} -> ${latest_version}"

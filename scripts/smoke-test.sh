@@ -27,7 +27,7 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   done
 
   profile="$HOME/.local/state/nix/profiles/agentbox"
-  for command_name in claude codex hunk; do
+  for command_name in claude codex hunk kimi command-code gsd fff-mcp; do
     command -v "$command_name" >/dev/null
   done
   test ! -e "$profile/bin/claude"

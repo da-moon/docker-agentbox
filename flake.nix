@@ -27,6 +27,10 @@
             claude-code = pkgs.callPackage ./nix/packages/claude-code.nix { inherit system; };
             codex = pkgs.callPackage ./nix/packages/codex.nix { inherit system; };
             hunk = pkgs.callPackage ./nix/packages/hunk.nix { inherit system; };
+            kimi-cli = pkgs.callPackage ./nix/packages/kimi-cli.nix { inherit system; };
+            command-code = pkgs.callPackage ./nix/packages/command-code.nix { inherit system; };
+            gsd-2 = pkgs.callPackage ./nix/packages/gsd-2.nix { inherit system; };
+            fff-mcp = pkgs.callPackage ./nix/packages/fff-mcp.nix { inherit system; };
           };
 
           coreTools = [
