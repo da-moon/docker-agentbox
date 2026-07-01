@@ -5,16 +5,16 @@
   system,
 }:
 let
-  version = "0.140.0";
+  version = "0.142.4";
 
   releaseBySystem = {
     aarch64-linux = {
       arch = "aarch64";
-      hash = "sha256-7GyATUFeQt0ozG+MbLUjiwDJr0v7WLY75V4m7E7ldsA=";
+      hash = "sha256-pUbuBZFTE/6jQPgxW1T0PQd/Q5Cvu1ry3pRNSAE9RH8=";
     };
     x86_64-linux = {
       arch = "x86_64";
-      hash = "sha256-SOWRlk1Luqt8BDPa7UHGXqjxUvwPHdIzSkLj3TIqSQY=";
+      hash = "sha256-8KxDdRxtOympc6hgqN5SitecsgzBKWYRkwo9XJHd75U=";
     };
   };
 
