@@ -49,7 +49,7 @@
             pkgs.cacert
             pkgs.curl
             pkgs.wget
-            pkgs.git
+            pkgs.gitMinimal
             pkgs.git-lfs
             pkgs.gh
             pkgs.openssh

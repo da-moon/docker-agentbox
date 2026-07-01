@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM nixos/nix:2.34.7@sha256:bf1d938835ab96312f098fa6c2e9cab367728e0aad0646ee3e02a787c80d8fb8
+FROM nixos/nix:2.34.7@sha256:bf1d938835ab96312f098fa6c2e9cab367728e0aad0646ee3e02a787c80d8fb8 AS build
 
 ENV NIX_CONFIG="experimental-features = nix-command flakes"
 ENV PATH="/home/agent/.local/state/nix/profiles/agentbox/bin:/nix/var/nix/profiles/agentbox/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin"
@@ -18,7 +18,8 @@ RUN nix profile add \
     && cp -a flake.nix flake.lock /opt/agentbox/ \
     && cp -a nix /opt/agentbox/nix \
     && chmod -R a+rX /opt/agentbox \
-    && rm -rf /tmp/agentbox-build /root/.cache/nix
+    && rm -rf /tmp/agentbox-build /root/.cache/nix \
+    && nix-store --gc
 
 RUN for account_file in passwd group shadow gshadow; do \
       if [ -e "/etc/${account_file}" ]; then \
@@ -44,10 +45,26 @@ RUN for account_file in passwd group shadow gshadow; do \
       'allowed-users = *' \
       'trusted-users = root' \
       > /etc/nix/nix.conf \
+    && rm -f /root/.nix-channels \
+    && rm -rf /root/.nix-defexpr \
+    && rm -f /nix/var/nix/profiles/per-user/root/channels \
+             /nix/var/nix/profiles/per-user/root/channels-*-link \
+    && rm -f /nix/var/nix/gcroots/docker/*base-system* \
     && nix-store --gc
 
 COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/agentbox-entrypoint
 
+# Collapse every layer into one. agentbox installs via flakes (path:/opt/agentbox#...),
+# so the base image's baked-in nixos channel and its ~460MB nixpkgs source are dead
+# weight; removing them above only produces whiteouts while the bytes linger in the
+# lower layers. Copying the merged rootfs onto a scratch base drops them for real.
+# BuildKit's COPY --from preserves the Nix store's hardlink optimisation.
+FROM scratch
+
+COPY --from=build / /
+
+ENV NIX_CONFIG="experimental-features = nix-command flakes"
+ENV PATH="/home/agent/.local/state/nix/profiles/agentbox/bin:/nix/var/nix/profiles/agentbox/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin"
 ENV HOME="/home/agent"
 ENV USER="agent"
 ENV LOGNAME="agent"
