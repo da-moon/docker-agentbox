@@ -7,16 +7,15 @@ ENV PATH="/home/agent/.local/state/nix/profiles/agentbox/bin:/nix/var/nix/profil
 
 WORKDIR /tmp/agentbox-build
 
-COPY flake.nix flake.lock ./
-COPY nix ./nix
+COPY nix ./
 
 RUN nix profile add \
       --profile /nix/var/nix/profiles/agentbox \
       --no-write-lock-file \
       .#agentbox-base \
     && mkdir -p /opt/agentbox \
-    && cp -a flake.nix flake.lock /opt/agentbox/ \
-    && cp -a nix /opt/agentbox/nix \
+    && cp -a /tmp/agentbox-build/. /opt/agentbox/ \
+    && cp flake.lock /opt/agentbox/home-flake/flake.lock \
     && chmod -R a+rX /opt/agentbox \
     && rm -rf /tmp/agentbox-build /root/.cache/nix \
     && nix-store --gc
@@ -64,7 +63,7 @@ FROM scratch
 COPY --from=build / /
 
 ENV NIX_CONFIG="experimental-features = nix-command flakes"
-ENV PATH="/home/agent/.local/state/nix/profiles/agentbox/bin:/nix/var/nix/profiles/agentbox/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin"
+ENV PATH="/home/agent/.local/state/nix/profiles/agentbox/bin:/home/agent/.local/state/nix/profiles/home-manager/home-path/bin:/nix/var/nix/profiles/agentbox/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/default/sbin"
 ENV HOME="/home/agent"
 ENV USER="agent"
 ENV LOGNAME="agent"

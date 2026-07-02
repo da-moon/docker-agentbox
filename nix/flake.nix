@@ -1,10 +1,21 @@
 {
   description = "Self-contained Nix environment for Claude Code and Codex agent containers";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
 
   outputs =
-    { self, nixpkgs, ... }:
+    {
+      self,
+      nixpkgs,
+      home-manager,
+      ...
+    }:
     let
       lib = nixpkgs.lib;
 
@@ -21,16 +32,22 @@
         let
           pkgs = import nixpkgs { inherit system; };
 
-          clearUnfree = p: p.overrideAttrs (o: { meta = (o.meta or { }) // { license = [ ]; }; });
+          clearUnfree =
+            p:
+            p.overrideAttrs (o: {
+              meta = (o.meta or { }) // {
+                license = [ ];
+              };
+            });
 
           harnessPackages = lib.mapAttrs (_: clearUnfree) {
-            claude-code = pkgs.callPackage ./nix/packages/claude-code.nix { inherit system; };
-            codex = pkgs.callPackage ./nix/packages/codex.nix { inherit system; };
-            hunk = pkgs.callPackage ./nix/packages/hunk.nix { inherit system; };
-            kimi-cli = pkgs.callPackage ./nix/packages/kimi-cli.nix { inherit system; };
-            command-code = pkgs.callPackage ./nix/packages/command-code.nix { inherit system; };
-            gsd-2 = pkgs.callPackage ./nix/packages/gsd-2.nix { inherit system; };
-            fff-mcp = pkgs.callPackage ./nix/packages/fff-mcp.nix { inherit system; };
+            claude-code = pkgs.callPackage ./packages/claude-code.nix { inherit system; };
+            codex = pkgs.callPackage ./packages/codex.nix { inherit system; };
+            hunk = pkgs.callPackage ./packages/hunk.nix { inherit system; };
+            kimi-cli = pkgs.callPackage ./packages/kimi-cli.nix { inherit system; };
+            command-code = pkgs.callPackage ./packages/command-code.nix { inherit system; };
+            gsd-2 = pkgs.callPackage ./packages/gsd-2.nix { inherit system; };
+            fff-mcp = pkgs.callPackage ./packages/fff-mcp.nix { inherit system; };
           };
 
           coreTools = [
@@ -81,25 +98,9 @@
             pkgs.shadow
             pkgs.su-exec
             pkgs.tini
-          ];
 
-          agentbox-extras = pkgs.buildEnv {
-            name = "agentbox-extras";
-            paths = [
-              pkgs.nodejs
-              pkgs.bun
-              pkgs.python3
-              pkgs.uv
-              pkgs.gcc
-              pkgs.gnumake
-              pkgs.cmake
-              pkgs.pkg-config
-              pkgs.biome
-              pkgs.prettier
-              pkgs.difftastic
-            ];
-            pathsToLink = [ "/bin" ];
-          };
+            home-manager.packages.${system}.home-manager
+          ];
 
           harnessByCommand = lib.mapAttrs' (
             attr: pkg: lib.nameValuePair (pkg.meta.mainProgram or pkg.pname) attr
@@ -110,7 +111,7 @@
           agentbox-shim = pkgs.writeShellApplication {
             name = "agentbox-shim";
             runtimeInputs = [ ];
-            text = "manifest=${agentbox-manifest}\n" + builtins.readFile ./nix/agentbox-shim.sh;
+            text = "manifest=${agentbox-manifest}\n" + builtins.readFile ./agentbox-shim.sh;
           };
 
           agentbox-shims = pkgs.runCommand "agentbox-shims" { } ''
@@ -128,10 +129,7 @@
         in
         {
           default = agentbox-base;
-          inherit
-            agentbox-base
-            agentbox-extras
-            ;
+          inherit agentbox-base;
         }
         // harnessPackages
       );
@@ -140,15 +138,28 @@
         system:
         let
           packages = self.packages.${system};
+
+          # Builds the same configuration the template in nix/home-flake
+          # produces once the entrypoint instantiates it for this system.
+          home-agent =
+            (home-manager.lib.homeManagerConfiguration {
+              pkgs = import nixpkgs { inherit system; };
+              modules = [
+                (import ./home-flake/home.nix {
+                  username = "agent";
+                  homeDirectory = "/home/agent";
+                })
+              ];
+            }).activationPackage;
         in
         {
           inherit (packages)
             agentbox-base
-            agentbox-extras
             claude-code
             codex
             hunk
             ;
+          inherit home-agent;
         }
       );
 

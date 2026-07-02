@@ -9,15 +9,14 @@ readonly DAEMON_LOG="/tmp/nix-daemon.log"
 
 requested_uid="${AGENT_UID:-1000}"
 requested_gid="${AGENT_GID:-1000}"
-run_as_root="${AGENT_RUN_AS_ROOT:-0}"
 
 is_unsigned_integer() {
   [[ "$1" =~ ^[0-9]+$ ]]
 }
 
 if [ "$(id -u)" -ne 0 ]; then
-  echo "agentbox-entrypoint must start as root so it can launch nix-daemon and select the runtime UID/GID." >&2
-  echo "Use AGENT_RUN_AS_ROOT=1 for a root shell; do not use docker run --user." >&2
+  echo "agentbox-entrypoint must start as root so it can launch nix-daemon and remap the runtime UID/GID; it drops to the unprivileged agent user before running anything." >&2
+  echo "Do not use docker run --user." >&2
   exit 1
 fi
 
@@ -26,13 +25,8 @@ if ! is_unsigned_integer "$requested_uid" || ! is_unsigned_integer "$requested_g
   exit 2
 fi
 
-if [ "$run_as_root" != "0" ] && [ "$run_as_root" != "1" ]; then
-  echo "AGENT_RUN_AS_ROOT must be either 0 or 1." >&2
-  exit 2
-fi
-
-if [ "$requested_uid" = "0" ] && [ "$run_as_root" != "1" ]; then
-  echo "AGENT_UID=0 requires AGENT_RUN_AS_ROOT=1." >&2
+if [ "$requested_uid" = "0" ] || [ "$requested_gid" = "0" ]; then
+  echo "The container always runs unprivileged; AGENT_UID and AGENT_GID must be non-zero." >&2
   exit 2
 fi
 
@@ -81,28 +75,40 @@ fi
 
 export NIX_REMOTE=daemon
 
-install_extras() {
-  su-exec "$1" env HOME="$2" NIX_REMOTE=daemon sh -c '
-    mkdir -p "$HOME/.local/state/nix/profiles"
-    nix profile install \
-      --profile "$HOME/.local/state/nix/profiles/agentbox" \
-      --no-write-lock-file \
-      path:/opt/agentbox#agentbox-extras
-  ' || echo "agentbox: extras install failed (continuing)" >&2
+# Home Manager owns the per-user environment: the startup packages and the
+# seeded harness defaults, defined by the flake template in
+# /opt/agentbox/home-flake. The template is copied to ~/.config/home-manager
+# on first start so the user owns it and can evolve it with plain
+# `home-manager switch`. AGENTBOX_HM_FLAKE skips the copy and applies a
+# user-provided flake reference instead.
+apply_home_manager() {
+  case "$(uname -m)" in
+  x86_64) hm_system="x86_64-linux" ;;
+  aarch64) hm_system="aarch64-linux" ;;
+  *)
+    echo "agentbox: unsupported architecture for home-manager (skipping)" >&2
+    return 0
+    ;;
+  esac
+  flake_ref="${AGENTBOX_HM_FLAKE:-$AGENT_HOME/.config/home-manager}"
+  if [ -z "${AGENTBOX_HM_FLAKE:-}" ]; then
+    su-exec "$1" env HOME="$AGENT_HOME" AGENTBOX_SYSTEM="$hm_system" sh -c '
+      [ -e "$HOME/.config/home-manager/flake.nix" ] && exit 0
+      mkdir -p "$HOME/.config/home-manager"
+      install -m 0644 /opt/agentbox/home-flake/home.nix "$HOME/.config/home-manager/home.nix"
+      install -m 0644 /opt/agentbox/home-flake/flake.lock "$HOME/.config/home-manager/flake.lock"
+      sed "s/@AGENTBOX_SYSTEM@/$AGENTBOX_SYSTEM/" /opt/agentbox/home-flake/flake.nix \
+        >"$HOME/.config/home-manager/flake.nix"
+    ' || echo "agentbox: home-manager template install failed (continuing)" >&2
+  fi
+  su-exec "$1" env HOME="$AGENT_HOME" USER="$AGENT_USER" NIX_REMOTE=daemon \
+    home-manager switch -b backup --flake "$flake_ref" ||
+    echo "agentbox: home-manager switch failed (continuing)" >&2
 }
-
-if [ "$run_as_root" = "1" ]; then
-  export HOME=/root
-  export USER=root
-  export LOGNAME=root
-  export PATH="/root/.local/state/nix/profiles/agentbox/bin:$PATH"
-  install_extras "0:0" /root
-  exec tini -- "$@"
-fi
 
 export HOME="$AGENT_HOME"
 export USER="$AGENT_USER"
 export LOGNAME="$AGENT_USER"
-install_extras "${requested_uid}:${requested_gid}" "$AGENT_HOME"
+apply_home_manager "${requested_uid}:${requested_gid}"
 
 exec tini -- su-exec "${requested_uid}:${requested_gid}" "$@"

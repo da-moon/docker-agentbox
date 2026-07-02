@@ -3,9 +3,11 @@ set -euo pipefail
 
 image_ref="${1:-agentbox:latest}"
 store_volume="agentbox-smoke-$$"
+workspace_dir="$(mktemp -d)"
 
 cleanup() {
   docker volume rm -f "$store_volume" >/dev/null 2>&1 || true
+  rm -rf "$workspace_dir"
 }
 trap cleanup EXIT
 docker volume create "$store_volume" >/dev/null
@@ -40,7 +42,25 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   nix --version
   hunk --help >/dev/null
   test -x "$profile/bin/hunk"
+
+  command -v home-manager >/dev/null
+  test -w "$HOME/.config/home-manager/home.nix"
+  test -w "$HOME/.claude/settings.json"
+  test "$(jq -r .permissions.defaultMode "$HOME/.claude/settings.json")" \
+    = "bypassPermissions"
+  test "$(jq -r .autoMemoryDirectory "$HOME/.claude/settings.json")" = "null"
+  grep -qx "approval_policy = \"never\"" "$HOME/.codex/config.toml"
+  grep -qx "default_permission_mode = \"yolo\"" "$HOME/.kimi-code/config.toml"
 '
+
+docker run --rm -v "$store_volume:/nix" -v "$workspace_dir:/workspace" \
+  "$image_ref" \
+  bash -lc '
+    set -euo pipefail
+    test -O "$HOME/.claude/settings.json"
+    test "$(jq -r .autoMemoryDirectory "$HOME/.claude/settings.json")" \
+      = "/workspace/.claude/memory"
+  '
 
 docker run --rm -v "$store_volume:/nix" \
   -e AGENT_UID=12345 -e AGENT_GID=12345 \
@@ -52,7 +72,7 @@ docker run --rm -v "$store_volume:/nix" \
   "$image_ref" \
   bash -lc 'test "$(id -u)" = 1000 && test "$(id -g)" = 23456'
 
-docker run --rm -v "$store_volume:/nix" \
-  -e AGENT_RUN_AS_ROOT=1 \
-  "$image_ref" \
-  bash -lc 'test "$(id -u)" = 0 && command -v node >/dev/null && nix --version >/dev/null'
+if docker run --rm -v "$store_volume:/nix" -e AGENT_UID=0 "$image_ref" true 2>/dev/null; then
+  echo "AGENT_UID=0 unexpectedly accepted" >&2
+  exit 1
+fi

@@ -116,7 +116,7 @@ sed -i -E \
 sed -i -E \
   '/outputHashBySystem = \{/,/};/ s|^([[:space:]]*x86_64-linux = ")[^"]*(";)|\1'"${placeholder_hash}"'\2|' \
   "$package_file"
-build_output="$(nix build "path:${repo_root}#command-code" --no-link 2>&1 || true)"
+build_output="$(nix build "path:${repo_root}/nix#command-code" --no-link 2>&1 || true)"
 output_hash="$(printf '%s\n' "$build_output" | sed -n 's/.*got:[[:space:]]*\(sha256-[A-Za-z0-9+/=]*\).*/\1/p' | head -n1)"
 [ -n "$output_hash" ] || {
   log_error "Could not parse the recomputed x86_64-linux outputHash from the build output"

@@ -45,6 +45,6 @@ prefetch_sri() {
 verify_package_build() {
   local repo_root="$1"
   local package_attr="$2"
-  log_info "Building .#${package_attr}"
-  nix build "path:${repo_root}#${package_attr}" --no-link
+  log_info "Building path:./nix#${package_attr}"
+  nix build "path:${repo_root}/nix#${package_attr}" --no-link
 }
