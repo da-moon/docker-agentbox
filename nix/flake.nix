@@ -44,6 +44,8 @@
             claude-code = pkgs.callPackage ./packages/claude-code.nix { inherit system; };
             codex = pkgs.callPackage ./packages/codex.nix { inherit system; };
             hunk = pkgs.callPackage ./packages/hunk.nix { inherit system; };
+            goose = pkgs.callPackage ./packages/goose.nix { inherit system; };
+            omp = pkgs.callPackage ./packages/omp.nix { inherit system; };
             kimi-cli = pkgs.callPackage ./packages/kimi-cli.nix { inherit system; };
             command-code = pkgs.callPackage ./packages/command-code.nix { inherit system; };
             gsd-2 = pkgs.callPackage ./packages/gsd-2.nix { inherit system; };
@@ -158,6 +160,8 @@
             claude-code
             codex
             hunk
+            goose
+            omp
             ;
           inherit home-agent;
         }

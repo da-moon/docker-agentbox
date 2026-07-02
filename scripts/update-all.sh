@@ -26,6 +26,8 @@ for updater in \
   update-claude-code.sh \
   update-codex.sh \
   update-hunk.sh \
+  update-goose.sh \
+  update-omp.sh \
   update-kimi-cli.sh \
   update-fff-mcp.sh \
   update-command-code.sh \

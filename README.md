@@ -56,10 +56,12 @@ Type the harness you want. The first run installs it, then hands off to it:
 ```bash
 codex --version      # installs codex, then runs it
 claude               # installs claude, then runs it
+goose --help
+omp --help
 hunk --help
 ```
 
-The image ships `claude`, `codex`, and `hunk`, and fetches only the one you run.
+The image ships `claude`, `codex`, `goose`, `omp`, and `hunk`, and fetches only the one you run.
 
 ## Home Manager
 

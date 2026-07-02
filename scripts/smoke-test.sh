@@ -29,11 +29,13 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   done
 
   profile="$HOME/.local/state/nix/profiles/agentbox"
-  for command_name in claude codex hunk kimi command-code gsd fff-mcp; do
+  for command_name in claude codex hunk goose omp kimi command-code gsd fff-mcp; do
     command -v "$command_name" >/dev/null
   done
   test ! -e "$profile/bin/claude"
   test ! -e "$profile/bin/codex"
+  test ! -e "$profile/bin/goose"
+  test ! -e "$profile/bin/omp"
 
   for command_name in node bun python3 uv gcc make cmake pkg-config biome prettier difft; do
     command -v "$command_name" >/dev/null
