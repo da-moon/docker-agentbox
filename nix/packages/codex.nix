@@ -3,6 +3,7 @@
   lib,
   stdenv,
   system,
+  zstd,
 }:
 let
   version = "0.143.0";
@@ -10,11 +11,11 @@ let
   releaseBySystem = {
     aarch64-linux = {
       arch = "aarch64";
-      hash = "sha256-2uxMsY860+VB6JhnY+cwGbPdtybR+GkuUOpfqYjAnXg=";
+      hash = "sha256-iBzaZgFhrfPuCYHzvI42+mHvRuBUZaHykAkPB/r9PZ8=";
     };
     x86_64-linux = {
       arch = "x86_64";
-      hash = "sha256-2dxzHcZuInsXWxPAcb6eoSbMdnL8rIqHgj2lCw0rL/4=";
+      hash = "sha256-rTqEsA9Ws9DsXviVn4k31upajoneKe71xFVfIGfoV6Q=";
     };
   };
 
@@ -24,10 +25,14 @@ stdenv.mkDerivation {
   pname = "codex";
   inherit version;
 
+  # The `-bundle` asset carries the sidecars the CLI expects to find beside
+  # itself; the plain codex-*.tar.gz ships only `codex`.
   src = fetchurl {
-    url = "https://github.com/openai/codex/releases/download/rust-v${version}/codex-${release.arch}-unknown-linux-musl.tar.gz";
+    url = "https://github.com/openai/codex/releases/download/rust-v${version}/codex-${release.arch}-unknown-linux-musl-bundle.tar.zst";
     inherit (release) hash;
   };
+
+  nativeBuildInputs = [ zstd ];
 
   sourceRoot = ".";
   dontBuild = true;
@@ -35,9 +40,13 @@ stdenv.mkDerivation {
   dontStrip = true;
   dontPatchELF = true;
 
+  # codex resolves `codex-code-mode-host` and `codex-resources/bwrap` relative
+  # to the realpath of its own executable, so both must sit next to bin/codex.
   installPhase = ''
     runHook preInstall
-    install -Dm755 "codex-${release.arch}-unknown-linux-musl" "$out/bin/codex"
+    install -Dm755 "codex" "$out/bin/codex"
+    install -Dm755 "codex-code-mode-host" "$out/bin/codex-code-mode-host"
+    install -Dm755 "codex-resources/bwrap" "$out/bin/codex-resources/bwrap"
     runHook postInstall
   '';
 
