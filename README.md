@@ -2,9 +2,9 @@
 
 A Docker sandbox for coding agents, built on the official Nix image. The
 published image stays small. It ships a common toolset, installs each agent
-harness the first time you run it, and installs the heavier development packages
-when the container starts. Nothing agent-specific is baked in, so an image you
-use only for Codex never pulls Claude Code.
+harness the first time you run it, and installs the heavier development
+packages when the container starts. Nothing agent-specific is baked in, so an
+image you use only for Codex never pulls Claude Code.
 
 ## Build
 
@@ -24,30 +24,23 @@ The Dockerfile pins the multi-architecture `nixos/nix:2.34.7` digest, so native
 
 ## Run
 
+- Start a containerized environment for your directory
+
 ```bash
-docker run --rm -it \
-  -e AGENT_UID="$(id -u)" \
-  -e AGENT_GID="$(id -g)" \
-  -v "$PWD:/workspace" \
-  --env-file <(env | grep API_KEY) \
-  -v agentbox-nix:/nix \
-  agentbox:latest
+docker run --detach -it --name "$(basename `pwd`)-agentbox" -e AGENT_UID="$(id -u)"  -e AGENT_GID="$(id -g)"  -v "$PWD:/workspace"  --env-file <(env | grep API_KEY)  -v agentbox-nix:/nix  agentbox:latest
 ```
 
-- `AGENT_UID` and `AGENT_GID` map the container's `agent` user onto your host
-  user, so files written under the mounted `/workspace` keep your ownership. Both
-  default to `1000` and must be non-zero. Do not pass Docker's `--user` flag: the
-  entrypoint has to start as root to launch `nix-daemon` and remap the user, and
-  it drops to the unprivileged `agent` user before running anything. There is no
-  root mode; for one-off debugging use `docker exec -u 0` on a running container.
-- `--env-file <(env | grep API_KEY)` forwards your API keys at runtime instead of
-  baking them into the image. Adjust the filter to whatever a harness needs, such
-  as `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`.
-- `-v agentbox-nix:/nix` keeps the Nix store on a named volume. The startup
-  packages and the harnesses then download once and are reused by later
-  containers. Without it, every fresh `--rm` container downloads them again. Use
-  a named volume rather than a bind mount; an empty directory mounted over `/nix`
-  hides the store baked into the image.
+> Keep in mind that the above snippet will pass in all env vars that contain
+> `API_KEY` in their name to the image ; for safety , you might want to change
+> that
+
+- To detach safely, press `Ctrl+P`, then `Ctrl+Q`
+
+- You can reattach to the container with the following
+
+```bash
+docker attach "$(basename `pwd`)-agentbox"
+```
 
 ## Running a harness
 
@@ -61,16 +54,16 @@ omp --help
 hunk --help
 ```
 
-The image ships `claude`, `codex`, `goose`, `omp`, and `hunk`, and fetches only the one you run.
+The image ships `claude`, `codex`, `goose`, `omp`, and `hunk`, and fetches only
+the one you run.
 
 ## Home Manager
 
-The per-user environment inside the container is a Home Manager
-configuration. On first start the entrypoint copies the flake template from
-`nix/home-flake/` to `~/.config/home-manager` — owned by the `agent` user,
-locked to the same pins as the image — and applies it with
-`home-manager switch`. It installs the startup packages and seeds the
-harness defaults below.
+The per-user environment inside the container is a Home Manager configuration.
+On first start the entrypoint copies the flake template from `nix/home-flake/`
+to `~/.config/home-manager` — owned by the `agent` user, locked to the same
+pins as the image — and applies it with `home-manager switch`. It installs the
+startup packages and seeds the harness defaults below.
 
 In a long-running container this is how you evolve the environment without
 rebuilding the image:
@@ -85,8 +78,8 @@ yet, so your edits survive restarts when the home directory persists (for
 example on a volume). Conflicting dotfiles are moved aside with a `.backup`
 extension.
 
-To bring your own configuration instead, point `AGENTBOX_HM_FLAKE` at a
-flake reference with a `homeConfigurations.agent` entry (use
+To bring your own configuration instead, point `AGENTBOX_HM_FLAKE` at a flake
+reference with a `homeConfigurations.agent` entry (use
 `~/.config/home-manager/flake.nix` from a running container as the shape to
 copy); it replaces the built-in template, harness defaults included:
 
@@ -96,10 +89,10 @@ docker run ... -e AGENTBOX_HM_FLAKE="path:/workspace/hm#agent" agentbox:latest
 
 ## Harness defaults
 
-The Home Manager configuration seeds a config file per harness at startup,
-only when the file does not already exist; delete a file to get the default
-back on the next start. The container is the sandbox, so approval prompts
-are off and commit/PR attribution is disabled:
+The Home Manager configuration seeds a config file per harness at startup, only
+when the file does not already exist; delete a file to get the default back on
+the next start. The container is the sandbox, so approval prompts are off and
+commit/PR attribution is disabled:
 
 - `~/.claude/settings.json`: `bypassPermissions` mode, attribution off
   (including the session-URL trailer), always-on thinking at `xhigh` effort,
@@ -114,8 +107,8 @@ are off and commit/PR attribution is disabled:
 ## Claude Code memory
 
 Claude Code keeps its auto memory (the notes it writes itself) under
-`~/.claude/projects/<project>/memory/`, and the container's home directory
-dies with `--rm`. When `/workspace` is a bind mount, the seeded
+`~/.claude/projects/<project>/memory/`, and the container's home directory dies
+with `--rm`. When `/workspace` is a bind mount, the seeded
 `~/.claude/settings.json` therefore includes:
 
 ```json
@@ -125,11 +118,11 @@ dies with `--rm`. When `/workspace` is a bind mount, the seeded
 The memory then lands in the mounted project and survives the container.
 Project, local, and `--settings` scopes all override the seeded file (the
 setting needs Claude Code 2.1.74 or later; the image pins a newer one).
-`CLAUDE.md`, `.claude/rules/`, and `CLAUDE.local.md` need no help: they live
-in the repo and load on both sides already.
+`CLAUDE.md`, `.claude/rules/`, and `CLAUDE.local.md` need no help: they live in
+the repo and load on both sides already.
 
-To have Claude Code on the host read and write the same memory, link the
-host's default memory directory into the repo. Once, from the repo root:
+To have Claude Code on the host read and write the same memory, link the host's
+default memory directory into the repo. Once, from the repo root:
 
 ```bash
 slug="$(printf '%s' "$PWD" | sed 's/[^A-Za-z0-9]/-/g')"
@@ -142,9 +135,8 @@ ln -sfn "$PWD/.claude/memory" "$mem"
 
 Add `.claude/memory/` to the project's `.gitignore` to keep the memory
 machine-local, or commit it to carry it with the repo. Do not point a
-`.claude/settings.local.json` inside the repo at a host path: in the
-container that file outranks the seeded default and the path does not exist
-there.
+`.claude/settings.local.json` inside the repo at a host path: in the container
+that file outranks the seeded default and the path does not exist there.
 
 ## What is in the image
 
@@ -152,8 +144,8 @@ Baked in:
 
 - Search and files: `rg`, `fd`, `sd`, `jq`, `yq`, `bat`, `fzf`, `delta`, `tree`
 - Git and network: Git, Git LFS, GitHub CLI, OpenSSH, curl, wget
-- Shell tooling: ShellCheck, shfmt, nixfmt, and the usual Unix, archive, and file
-  utilities
+- Shell tooling: ShellCheck, shfmt, nixfmt, and the usual Unix, archive, and
+  file utilities
 - Nix and Home Manager, for the workflows above
 
 Installed into the container at startup: Node.js, Bun, Python, uv, GCC, Make,
@@ -202,14 +194,14 @@ nix flake update path:./nix
 
 ## Repository layout
 
-Nix is an implementation detail of the image, so all of it lives under
-`nix/`. `nix/flake.nix` is the image's package source: the Dockerfile builds
+Nix is an implementation detail of the image, so all of it lives under `nix/`.
+`nix/flake.nix` is the image's package source: the Dockerfile builds
 `agentbox-base` from it and copies it to `/opt/agentbox`, where the shims
-resolve harness installs at runtime. `nix/home-flake/` is the separate
-per-user flake that ends up in `~/.config/home-manager` inside the
-container. Building and running the image needs no nix on the host; only
-`scripts/update-*.sh` and `nix flake check` use it, and the update scripts
-exit before touching any file when nix is missing.
+resolve harness installs at runtime. `nix/home-flake/` is the separate per-user
+flake that ends up in `~/.config/home-manager` inside the container. Building
+and running the image needs no nix on the host; only `scripts/update-*.sh` and
+`nix flake check` use it, and the update scripts exit before touching any file
+when nix is missing.
 
 ## Verification
 

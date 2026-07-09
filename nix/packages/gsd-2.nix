@@ -20,13 +20,13 @@ let
   pname = "gsd-2";
   npmPackage = "@opengsd/gsd-pi";
   npmTarballName = "gsd-pi";
-  version = "1.3.0";
+  version = "1.9.0";
   nodejs = nodejs_22;
 
   outputHashBySystem = {
     # scripts/update-gsd-2.sh managed hashes.
     aarch64-linux = lib.fakeHash;
-    x86_64-linux = "sha256-xtN4OR1v0JLGNcxLFqMGCOcH+mg8f6EnqFEi/4JcCGU=";
+    x86_64-linux = "sha256-sm9fTxAbBCGLE2k7I58/nBi8k064LU1gHpgHWmB/uu0=";
   };
 
   npmDeps = stdenv.mkDerivation {
@@ -34,7 +34,7 @@ let
 
     src = fetchurl {
       url = "https://registry.npmjs.org/${npmPackage}/-/${npmTarballName}-${version}.tgz";
-      hash = "sha256-0NxJFbWeUHAvBbdnCOCB4fokATLGZD4qlCAr4rzrAmM=";
+      hash = "sha256-fvG5H/G1GO4Cdcz7bI6whHvfCAQlDniqyr0cUyIRmcM=";
     };
 
     nativeBuildInputs = [
