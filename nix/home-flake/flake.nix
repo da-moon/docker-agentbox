@@ -42,8 +42,10 @@
           # attribution is turned off everywhere.
           claudeSettings = pkgs.writeText "agentbox-claude-settings.json" (
             builtins.toJSON {
-              permissions.defaultMode = "bypassPermissions";
+              permissions.defaultMode = "auto";
               skipDangerousModePermissionPrompt = true;
+              skipAutoPermissionPrompt = true ;
+              skipWorkflowUsageWarning = true ;
               attribution = {
                 commit = "";
                 pr = "";
@@ -117,6 +119,7 @@
             pkgs.glab
             pkgs.openssh
 
+            pkgs.eza
             pkgs.fd
             pkgs.sd
             pkgs.yq-go

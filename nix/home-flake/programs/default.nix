@@ -3,6 +3,7 @@
     ./atuin.nix
     ./bash.nix
     ./bat.nix
+    ./eza.nix
     ./fzf.nix
     ./git.nix
     ./helix.nix
