@@ -4,6 +4,7 @@
     ./bash.nix
     ./bat.nix
     ./fzf.nix
+    ./git.nix
     ./helix.nix
     ./home-manager.nix
     ./jq.nix
