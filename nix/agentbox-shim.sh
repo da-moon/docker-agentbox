@@ -12,7 +12,7 @@ exec 9>"$(dirname "$profile")/.agentbox.lock"
 flock 9
 if [ ! -x "$bin" ]; then
   echo "agentbox: installing '$cmd' on first use (one-time)..." >&2
-  nix profile install --profile "$profile" --no-write-lock-file "path:/opt/agentbox#$attr" \
+  nix profile add --profile "$profile" --no-write-lock-file "path:/opt/agentbox#$attr" \
     || { echo "agentbox: install of '$cmd' failed" >&2; exit 1; }
 fi
 exec 9>&-

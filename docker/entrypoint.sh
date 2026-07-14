@@ -77,10 +77,9 @@ export NIX_REMOTE=daemon
 
 # Home Manager owns the per-user environment: the startup packages and the
 # seeded harness defaults, defined by the flake template in
-# /opt/agentbox/home-flake. The template is copied to ~/.config/home-manager
-# on first start so the user owns it and can evolve it with plain
-# `home-manager switch`. AGENTBOX_HM_FLAKE skips the copy and applies a
-# user-provided flake reference instead.
+# /opt/agentbox/home-flake. The template files are copied to
+# ~/.config/home-manager on first start so the user owns them and can evolve
+# them with plain `hm-switch` or `home-manager switch`.
 apply_home_manager() {
   case "$(uname -m)" in
   x86_64) hm_system="x86_64-linux" ;;
@@ -90,25 +89,35 @@ apply_home_manager() {
     return 0
     ;;
   esac
-  flake_ref="${AGENTBOX_HM_FLAKE:-$AGENT_HOME/.config/home-manager}"
-  if [ -z "${AGENTBOX_HM_FLAKE:-}" ]; then
-    su-exec "$1" env HOME="$AGENT_HOME" AGENTBOX_SYSTEM="$hm_system" sh -c '
-      [ -e "$HOME/.config/home-manager/flake.nix" ] && exit 0
-      mkdir -p "$HOME/.config/home-manager"
-      install -m 0644 /opt/agentbox/home-flake/home.nix "$HOME/.config/home-manager/home.nix"
-      install -m 0644 /opt/agentbox/home-flake/flake.lock "$HOME/.config/home-manager/flake.lock"
-      sed "s/@AGENTBOX_SYSTEM@/$AGENTBOX_SYSTEM/" /opt/agentbox/home-flake/flake.nix \
-        >"$HOME/.config/home-manager/flake.nix"
-    ' || echo "agentbox: home-manager template install failed (continuing)" >&2
-  fi
+  flake_ref="$AGENT_HOME/.config/home-manager#agent"
+  su-exec "$1" env HOME="$AGENT_HOME" AGENTBOX_SYSTEM="$hm_system" sh -c '
+    [ -e "$HOME/.config/home-manager/flake.nix" ] && exit 0
+    mkdir -p "$HOME/.config/home-manager"
+    install -m 0644 /opt/agentbox/home-flake/flake.lock "$HOME/.config/home-manager/flake.lock"
+    cp -R /opt/agentbox/home-flake/programs "$HOME/.config/home-manager/programs"
+    sed "s/@AGENTBOX_SYSTEM@/$AGENTBOX_SYSTEM/" /opt/agentbox/home-flake/flake.nix \
+      >"$HOME/.config/home-manager/flake.nix"
+  ' || echo "agentbox: home-manager template install failed (continuing)" >&2
+
   su-exec "$1" env HOME="$AGENT_HOME" USER="$AGENT_USER" NIX_REMOTE=daemon \
     home-manager switch -b backup --flake "$flake_ref" ||
     echo "agentbox: home-manager switch failed (continuing)" >&2
+}
+
+load_home_manager_session_variables() {
+  local session_variables="$AGENT_HOME/.local/state/nix/profiles/home-manager/home-path/etc/profile.d/hm-session-vars.sh"
+  if [ -r "$session_variables" ]; then
+    set +u
+    # shellcheck disable=SC1090
+    . "$session_variables"
+    set -u
+  fi
 }
 
 export HOME="$AGENT_HOME"
 export USER="$AGENT_USER"
 export LOGNAME="$AGENT_USER"
 apply_home_manager "${requested_uid}:${requested_gid}"
+load_home_manager_session_variables
 
 exec tini -- su-exec "${requested_uid}:${requested_gid}" "$@"

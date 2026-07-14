@@ -15,7 +15,6 @@ RUN nix profile add \
       .#agentbox-base \
     && mkdir -p /opt/agentbox \
     && cp -a /tmp/agentbox-build/. /opt/agentbox/ \
-    && cp flake.lock /opt/agentbox/home-flake/flake.lock \
     && chmod -R a+rX /opt/agentbox \
     && rm -rf /tmp/agentbox-build /root/.cache/nix \
     && nix-store --gc

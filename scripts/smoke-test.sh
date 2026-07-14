@@ -21,7 +21,8 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   test -w /workspace
 
   for command_name in \
-    rg fd sd jq yq bat fzf delta \
+    rg fd sd jq yq bat fzf delta hx clear \
+    atuin zellij \
     git gh ssh curl wget \
     shellcheck shfmt nixfmt nix
   do
@@ -46,7 +47,28 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   test -x "$profile/bin/hunk"
 
   command -v home-manager >/dev/null
-  test -w "$HOME/.config/home-manager/home.nix"
+  test "$EDITOR" = "hx"
+  test "$VISUAL" = "hx"
+  test -e "$HOME/.config/helix/config.toml"
+  test -e "$HOME/.config/helix/languages.toml"
+  test -e "$HOME/.config/zellij/config.kdl"
+  zellij setup --check >/dev/null
+  grep -q "line-number = \"relative\"" "$HOME/.config/helix/config.toml"
+  grep -q "command = \"vtsls\"" "$HOME/.config/helix/languages.toml"
+  grep -q "show_startup_tips false" "$HOME/.config/zellij/config.kdl"
+  test -w "$HOME/.config/home-manager/flake.nix"
+  test -w "$HOME/.config/home-manager/flake.lock"
+  test -w "$HOME/.config/home-manager/programs/helix.nix"
+  test -w "$HOME/.config/home-manager/programs/zellij.nix"
+  test -w "$HOME/.config/home-manager/programs/helix-settings.nix"
+  test -w "$HOME/.config/home-manager/programs/helix-languages.nix"
+  test -w "$HOME/.config/home-manager/programs/zellij-settings.nix"
+  grep -q "theme = \"nord\"" "$HOME/.config/home-manager/programs/helix-settings.nix"
+  grep -q "vtsls = {" "$HOME/.config/home-manager/programs/helix-languages.nix"
+  grep -q "zellij_forgot.wasm" "$HOME/.config/home-manager/programs/zellij-settings.nix"
+  grep -q "nixos-unstable" "$HOME/.config/home-manager/flake.lock"
+  test ! -e "$HOME/.config/home-manager/home.nix"
+  bash -ic "alias hm-switch >/dev/null && alias hm-update >/dev/null"
   test -w "$HOME/.claude/settings.json"
   test "$(jq -r .permissions.defaultMode "$HOME/.claude/settings.json")" \
     = "bypassPermissions"
@@ -63,6 +85,11 @@ docker run --rm -v "$store_volume:/nix" -v "$workspace_dir:/workspace" \
     test "$(jq -r .autoMemoryDirectory "$HOME/.claude/settings.json")" \
       = "/workspace/.claude/memory"
   '
+
+docker run --rm -v "$store_volume:/nix" "$image_ref" sh -c '
+  test "$EDITOR" = hx
+  test "$VISUAL" = hx
+'
 
 docker run --rm -v "$store_volume:/nix" \
   -e AGENT_UID=12345 -e AGENT_GID=12345 \

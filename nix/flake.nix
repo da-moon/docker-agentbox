@@ -1,10 +1,12 @@
 {
-  description = "Self-contained Nix environment for Claude Code and Codex agent containers";
+  description = "Sandboxed LLM Harness container";
 
+  # Flake input URLs must stay literal; Nix rejects computed input attrsets or
+  # URLs here. Keep the nixpkgs and Home Manager release pins in sync manually.
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     home-manager = {
-      url = "github:nix-community/home-manager";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -52,51 +54,11 @@
             fff-mcp = pkgs.callPackage ./packages/fff-mcp.nix { inherit system; };
           };
 
-          coreTools = [
+          bootTools = [
             pkgs.bashInteractive
             pkgs.coreutils-full
-            pkgs.findutils
             pkgs.gnused
-            pkgs.gnugrep
-            pkgs.gawk
-            pkgs.which
-            pkgs.file
-            pkgs.less
-            pkgs.procps
-            pkgs.util-linux
-
             pkgs.cacert
-            pkgs.curl
-            pkgs.wget
-            pkgs.gitMinimal
-            pkgs.git-lfs
-            pkgs.gh
-            pkgs.openssh
-
-            pkgs.ripgrep
-            pkgs.fd
-            pkgs.sd
-            pkgs.jq
-            pkgs.yq-go
-            pkgs.bat
-            pkgs.fzf
-            pkgs.delta
-            pkgs.tree
-
-            pkgs.shellcheck
-            pkgs.shfmt
-            pkgs.nixfmt
-
-            pkgs.gnupatch
-            pkgs.gnutar
-            pkgs.gzip
-            pkgs.bzip2
-            pkgs.xz
-            pkgs.zstd
-            pkgs.unzip
-            pkgs.zip
-            pkgs.rsync
-
             pkgs.shadow
             pkgs.su-exec
             pkgs.tini
@@ -112,7 +74,10 @@
 
           agentbox-shim = pkgs.writeShellApplication {
             name = "agentbox-shim";
-            runtimeInputs = [ ];
+            runtimeInputs = [
+              pkgs.jq
+              pkgs.util-linux
+            ];
             text = "manifest=${agentbox-manifest}\n" + builtins.readFile ./agentbox-shim.sh;
           };
 
@@ -125,7 +90,7 @@
 
           agentbox-base = pkgs.buildEnv {
             name = "agentbox-base";
-            paths = coreTools ++ [ agentbox-shims ];
+            paths = bootTools ++ [ agentbox-shims ];
             pathsToLink = [ "/bin" ];
           };
         in
@@ -140,19 +105,14 @@
         system:
         let
           packages = self.packages.${system};
+          homeFlakeOutputs = (import ./home-flake/flake.nix).outputs {
+            inherit nixpkgs home-manager;
+          };
 
           # Builds the same configuration the template in nix/home-flake
           # produces once the entrypoint instantiates it for this system.
           home-agent =
-            (home-manager.lib.homeManagerConfiguration {
-              pkgs = import nixpkgs { inherit system; };
-              modules = [
-                (import ./home-flake/home.nix {
-                  username = "agent";
-                  homeDirectory = "/home/agent";
-                })
-              ];
-            }).activationPackage;
+            (builtins.getAttr "agent-${system}" homeFlakeOutputs.homeConfigurations).activationPackage;
         in
         {
           inherit (packages)
