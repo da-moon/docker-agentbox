@@ -5,6 +5,11 @@
     enable = true;
     package = pkgs.gitMinimal;
 
+    # Per-user identity: uncomment and fill in after launching the container,
+    # or set via `git config --global user.name` / `git config --global user.email`.
+    # userName = "";
+    # userEmail = "";
+
     extraConfig = {
       core = {
         autocrlf = false;
