@@ -30,7 +30,11 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   done
 
   profile="$HOME/.local/state/nix/profiles/agentbox"
-  for command_name in claude codex hunk goose omp kimi command-code gsd fff-mcp; do
+  harnesses=(claude codex hunk goose omp kimi command-code gsd fff-mcp)
+  if [ "$(uname -m)" = "x86_64" ]; then
+    harnesses+=(elio)
+  fi
+  for command_name in "${harnesses[@]}"; do
     command -v "$command_name" >/dev/null
   done
   test ! -e "$profile/bin/claude"
@@ -43,7 +47,7 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   done
 
   nix --version
-  hunk --help >/dev/null
+  hunk --version >/dev/null 2>&1
   test -x "$profile/bin/hunk"
 
   command -v home-manager >/dev/null
@@ -68,13 +72,21 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   grep -q "zellij_forgot.wasm" "$HOME/.config/home-manager/programs/zellij-settings.nix"
   grep -q "nixos-unstable" "$HOME/.config/home-manager/flake.lock"
   test ! -e "$HOME/.config/home-manager/home.nix"
-  bash -ic "alias hm-switch >/dev/null && alias hm-update >/dev/null"
+  grep -q "alias -- hm-switch=" "$HOME/.bashrc"
+  grep -q "alias -- hm-update=" "$HOME/.bashrc"
   test -w "$HOME/.claude/settings.json"
   test "$(jq -r .permissions.defaultMode "$HOME/.claude/settings.json")" \
-    = "bypassPermissions"
+    = "auto"
   test "$(jq -r .autoMemoryDirectory "$HOME/.claude/settings.json")" = "null"
   grep -qx "approval_policy = \"never\"" "$HOME/.codex/config.toml"
   grep -qx "default_permission_mode = \"yolo\"" "$HOME/.kimi-code/config.toml"
+
+  test -e "$HOME/.commandcode/settings.json"
+  test -x "$HOME/.commandcode/hooks/strip-coauthor.sh"
+  grep -q "strip-coauthor.sh" "$HOME/.commandcode/settings.json"
+  git_hooks_path=$(git config --global core.hooksPath)
+  test -n "$git_hooks_path"
+  test -x "$git_hooks_path/commit-msg"
 '
 
 docker run --rm -v "$store_volume:/nix" -v "$workspace_dir:/workspace" \
