@@ -6,7 +6,7 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/gsd-2.nix"
+readonly package_file="${repo_root}/nix/packages/gsd-2/default.nix"
 readonly registry_url="https://registry.npmjs.org/@opengsd/gsd-pi"
 readonly placeholder_hash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 

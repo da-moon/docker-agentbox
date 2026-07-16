@@ -6,16 +6,16 @@
   system,
 }:
 let
-  version = "16.5.2";
+  version = "17.0.0";
 
   releaseBySystem = {
     x86_64-linux = {
       asset = "omp-linux-x64";
-      hash = "sha256-zCyKlY4JrcNDKGBVUXTXDxy84L6Khq9BP/3PLsGMsQ4=";
+      hash = "sha256-5fWlSniabyVL9bkxm86uMRUV2yroRu2YqhtsFmAKS8I=";
     };
     aarch64-linux = {
       asset = "omp-linux-arm64";
-      hash = "sha256-G14cxbHfVlvcnGioTNmJMqiAsrsqWvvCgQXimu5SzxE=";
+      hash = "sha256-0BueJJ+l3tNhqFEdbQbqyWU9g7bzQ6d64/JbIBzRAV4=";
     };
   };
 

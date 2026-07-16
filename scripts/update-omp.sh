@@ -6,10 +6,11 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/omp.nix"
+readonly package_file="${repo_root}/nix/packages/omp/default.nix"
 readonly releases_api="https://api.github.com/repos/can1357/oh-my-pi/releases/latest"
 
 target_version=""
+target_tag=""
 check_only=false
 rehash=false
 no_build=false
@@ -20,6 +21,7 @@ Usage: scripts/update-omp.sh [OPTIONS]
 
 Options:
   --version VERSION  Update to a specific version instead of latest
+  --tag TAG          Update to a specific GitHub release tag instead of latest
   --check            Exit 1 when a newer version is available
   --rehash           Recompute hashes for the current or selected version
   --no-build         Skip package build verification
@@ -35,6 +37,14 @@ while [ "$#" -gt 0 ]; do
         exit 2
       }
       target_version="$2"
+      shift 2
+      ;;
+    --tag)
+      [ "$#" -ge 2 ] || {
+        log_error "--tag requires a value"
+        exit 2
+      }
+      target_tag="$2"
       shift 2
       ;;
     --check)
@@ -69,8 +79,12 @@ current_version="$(read_nix_version "$package_file")"
   exit 2
 }
 
-if [ -n "$target_version" ]; then
+if [ -n "$target_tag" ]; then
+  latest_tag="$target_tag"
+  latest_version="${latest_tag#v}"
+elif [ -n "$target_version" ]; then
   latest_version="$target_version"
+  latest_tag="v${latest_version}"
 else
   latest_tag="$(curl -fsSL "$releases_api" | jq -er '.tag_name')"
   latest_version="${latest_tag#v}"
@@ -90,8 +104,8 @@ if [ "$current_version" = "$latest_version" ] && [ "$rehash" = false ]; then
   exit 0
 fi
 
-x86_url="https://github.com/can1357/oh-my-pi/releases/download/v${latest_version}/omp-linux-x64"
-arm_url="https://github.com/can1357/oh-my-pi/releases/download/v${latest_version}/omp-linux-arm64"
+x86_url="https://github.com/can1357/oh-my-pi/releases/download/${latest_tag}/omp-linux-x64"
+arm_url="https://github.com/can1357/oh-my-pi/releases/download/${latest_tag}/omp-linux-arm64"
 x86_hash="$(prefetch_sri "$x86_url")"
 arm_hash="$(prefetch_sri "$arm_url")"
 

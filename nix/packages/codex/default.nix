@@ -11,11 +11,11 @@ let
   releaseBySystem = {
     aarch64-linux = {
       arch = "aarch64";
-      hash = "sha256-TQckPvSuZ4a4syHXrqP5vk4dLFl65UB+fBuYczNAgrI=";
+      hash = "sha256-FoBSwgYeEiVZJSKGcBS+sFVlmEVlIQzlEjA/fAb8jvk=";
     };
     x86_64-linux = {
       arch = "x86_64";
-      hash = "sha256-N8mFvp2J6MT0OzqgWUwSE+rCEtMK4rlSIfCP7IB1FdE=";
+      hash = "sha256-HhzOCSO3OVZk8tmJAuaE4vpf5sWJ9Ggl6zT1fWpDkAI=";
     };
   };
 

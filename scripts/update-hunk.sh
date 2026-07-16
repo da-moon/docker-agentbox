@@ -6,10 +6,11 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/hunk.nix"
+readonly package_file="${repo_root}/nix/packages/hunk/default.nix"
 readonly releases_url="https://github.com/modem-dev/hunk/releases/latest"
 
 target_version=""
+target_tag=""
 check_only=false
 rehash=false
 no_build=false
@@ -20,6 +21,7 @@ Usage: scripts/update-hunk.sh [OPTIONS]
 
 Options:
   --version VERSION  Update to a specific version instead of latest
+  --tag TAG          Update to a specific GitHub release tag instead of latest
   --check            Exit 1 when a newer version is available
   --rehash           Recompute hashes for the current or selected version
   --no-build         Skip package build verification
@@ -35,6 +37,14 @@ while [ "$#" -gt 0 ]; do
         exit 2
       }
       target_version="$2"
+      shift 2
+      ;;
+    --tag)
+      [ "$#" -ge 2 ] || {
+        log_error "--tag requires a value"
+        exit 2
+      }
+      target_tag="$2"
       shift 2
       ;;
     --check)
@@ -69,12 +79,16 @@ current_version="$(read_nix_version "$package_file")"
   exit 2
 }
 
-if [ -n "$target_version" ]; then
+if [ -n "$target_tag" ]; then
+  latest_tag="$target_tag"
+  latest_version="${latest_tag#v}"
+elif [ -n "$target_version" ]; then
   latest_version="$target_version"
+  latest_tag="v${latest_version}"
 else
   effective_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' "$releases_url")"
-  latest_version="${effective_url##*/}"
-  latest_version="${latest_version#v}"
+  latest_tag="${effective_url##*/}"
+  latest_version="${latest_tag#v}"
 fi
 
 if [ "$check_only" = true ]; then
@@ -91,8 +105,8 @@ if [ "$current_version" = "$latest_version" ] && [ "$rehash" = false ]; then
   exit 0
 fi
 
-x86_url="https://github.com/modem-dev/hunk/releases/download/v${latest_version}/hunkdiff-linux-x64.tar.gz"
-arm_url="https://github.com/modem-dev/hunk/releases/download/v${latest_version}/hunkdiff-linux-arm64.tar.gz"
+x86_url="https://github.com/modem-dev/hunk/releases/download/${latest_tag}/hunkdiff-linux-x64.tar.gz"
+arm_url="https://github.com/modem-dev/hunk/releases/download/${latest_tag}/hunkdiff-linux-arm64.tar.gz"
 x86_hash="$(prefetch_sri "$x86_url")"
 arm_hash="$(prefetch_sri "$arm_url")"
 

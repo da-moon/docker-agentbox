@@ -42,17 +42,19 @@
               };
             });
 
-          harnessPackages = lib.mapAttrs (_: clearUnfree) {
-            claude-code = pkgs.callPackage ./packages/claude-code.nix { inherit system; };
-            codex = pkgs.callPackage ./packages/codex.nix { inherit system; };
-            hunk = pkgs.callPackage ./packages/hunk.nix { inherit system; };
-            goose = pkgs.callPackage ./packages/goose.nix { inherit system; };
-            omp = pkgs.callPackage ./packages/omp.nix { inherit system; };
-            kimi-cli = pkgs.callPackage ./packages/kimi-cli.nix { inherit system; };
-            command-code = pkgs.callPackage ./packages/command-code.nix { inherit system; };
-            gsd-2 = pkgs.callPackage ./packages/gsd-2.nix { inherit system; };
-            fff-mcp = pkgs.callPackage ./packages/fff-mcp.nix { inherit system; };
-          };
+          harnessPackages = lib.mapAttrs (_: clearUnfree) ({
+            claude-code = pkgs.callPackage ./packages/claude-code { inherit system; };
+            codex = pkgs.callPackage ./packages/codex { inherit system; };
+            hunk = pkgs.callPackage ./packages/hunk { inherit system; };
+            goose = pkgs.callPackage ./packages/goose { inherit system; };
+            omp = pkgs.callPackage ./packages/omp { inherit system; };
+            kimi-cli = pkgs.callPackage ./packages/kimi-cli { inherit system; };
+            command-code = pkgs.callPackage ./packages/command-code { inherit system; };
+            gsd-2 = pkgs.callPackage ./packages/gsd-2 { inherit system; };
+            fff-mcp = pkgs.callPackage ./packages/fff-mcp { inherit system; };
+          } // lib.optionalAttrs (system == "x86_64-linux") {
+            elio = pkgs.callPackage ./packages/elio { inherit system; };
+          });
 
           bootTools = [
             pkgs.bashInteractive
@@ -123,6 +125,7 @@
             goose
             omp
             ;
+          inherit (lib.optionalAttrs (system == "x86_64-linux") packages) elio;
           inherit home-agent;
         }
       );

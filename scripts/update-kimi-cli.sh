@@ -6,7 +6,7 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/kimi-cli.nix"
+readonly package_file="${repo_root}/nix/packages/kimi-cli/default.nix"
 readonly download_base_url="https://code.kimi.com/kimi-code"
 
 target_version=""

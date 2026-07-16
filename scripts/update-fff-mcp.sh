@@ -6,11 +6,12 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/fff-mcp.nix"
+readonly package_file="${repo_root}/nix/packages/fff-mcp/default.nix"
 readonly releases_api="https://api.github.com/repos/dmtrKovalenko/fff.nvim/releases/latest"
 readonly download_base_url="https://github.com/dmtrKovalenko/fff.nvim/releases/download"
 
 target_version=""
+target_tag=""
 check_only=false
 rehash=false
 no_build=false
@@ -21,6 +22,7 @@ Usage: scripts/update-fff-mcp.sh [OPTIONS]
 
 Options:
   --version VERSION  Update to a specific version instead of latest
+  --tag TAG          Update to a specific GitHub release tag instead of latest
   --check            Exit 1 when a newer version is available
   --rehash           Recompute hashes for the current or selected version
   --no-build         Skip package build verification
@@ -36,6 +38,14 @@ while [ "$#" -gt 0 ]; do
         exit 2
       }
       target_version="$2"
+      shift 2
+      ;;
+    --tag)
+      [ "$#" -ge 2 ] || {
+        log_error "--tag requires a value"
+        exit 2
+      }
+      target_tag="$2"
       shift 2
       ;;
     --check)
@@ -70,13 +80,16 @@ current_version="$(read_nix_version "$package_file")"
   exit 2
 }
 
-if [ -n "$target_version" ]; then
+if [ -n "$target_tag" ]; then
+  latest_tag="$target_tag"
+  latest_version="${latest_tag#v}"
+elif [ -n "$target_version" ]; then
   latest_version="$target_version"
+  latest_tag="v${latest_version}"
 else
   latest_tag="$(curl -fsSL "$releases_api" | jq -er '.tag_name')"
   latest_version="${latest_tag#v}"
 fi
-release_tag="v${latest_version}"
 
 if [ "$check_only" = true ]; then
   if [ "$current_version" = "$latest_version" ]; then
@@ -92,8 +105,8 @@ if [ "$current_version" = "$latest_version" ] && [ "$rehash" = false ]; then
   exit 0
 fi
 
-x86_url="${download_base_url}/${release_tag}/fff-mcp-x86_64-unknown-linux-musl"
-arm_url="${download_base_url}/${release_tag}/fff-mcp-aarch64-unknown-linux-musl"
+x86_url="${download_base_url}/${latest_tag}/fff-mcp-x86_64-unknown-linux-musl"
+arm_url="${download_base_url}/${latest_tag}/fff-mcp-aarch64-unknown-linux-musl"
 x86_hash="$(prefetch_sri "$x86_url")"
 arm_hash="$(prefetch_sri "$arm_url")"
 
