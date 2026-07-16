@@ -1,9 +1,22 @@
 { pkgs, ... }:
 
+let
+  stripCoauthorHook = pkgs.writeShellScript "agentbox-strip-coauthor-commit-msg" ''
+    # Strip all Co-authored-by trailers from commit messages.
+    msg_file="$1"
+    [ -f "$msg_file" ] || exit 0
+    ${pkgs.gnused}/bin/sed -i '/^[[:space:]]*Co-authored-by:/Id' "$msg_file"
+    exit 0
+  '';
+in
 {
   programs.git = {
     enable = true;
     package = pkgs.gitMinimal;
+
+    hooks = {
+      commit-msg = stripCoauthorHook;
+    };
 
     # Per-user identity: uncomment and fill in after launching the container,
     # or set via `git config --global user.name` / `git config --global user.email`.

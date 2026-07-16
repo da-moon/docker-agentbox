@@ -76,6 +76,41 @@
             [upgrade]
             auto_install = false
           '';
+
+          commandCodeSettings = pkgs.writeText "agentbox-commandcode-settings.json" (
+            builtins.toJSON {
+              hooks = {
+                PreToolUse = [
+                  {
+                    matcher = "SHELL";
+                    hooks = [
+                      {
+                        type = "command";
+                        command = "/home/agent/.commandcode/hooks/strip-coauthor.sh";
+                        timeout = 10;
+                      }
+                    ];
+                  }
+                ];
+              };
+            }
+          );
+
+          commandCodeHook = pkgs.writeShellScript "agentbox-commandcode-strip-coauthor.sh" ''
+            # Command Code PreToolUse hook: deny git commits containing Command Code co-author trailers.
+            input=$(cat)
+            tool_name=$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.tool_name // empty' 2>/dev/null)
+            [ "$tool_name" = "shell_command" ] || exit 0
+            command=$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.tool_input.command // empty' 2>/dev/null)
+            args=$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.tool_input.args // [] | map(tostring) | join(" ")' 2>/dev/null)
+            combined="$command $args"
+            echo "$combined" | grep -qiE 'git[[:space:]]+.*commit' || exit 0
+            echo "$combined" | grep -qiE 'co-authored-by:.*(commandcodebot|noreply@commandcode\.ai)' || exit 0
+            cat <<'OUT'
+            {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Command Code co-author trailers are not permitted. Remove the Co-authored-by CommandCodeBot line from the commit message and retry."}}
+            OUT
+            exit 0
+          '';
         in
         {
           imports = [ ./programs ];
@@ -180,6 +215,11 @@
             if [ ! -e "$HOME/.kimi-code/tui.toml" ]; then
               mkdir -p "$HOME/.kimi-code"
               install -m 0644 ${kimiTui} "$HOME/.kimi-code/tui.toml"
+            fi
+            if [ ! -e "$HOME/.commandcode/settings.json" ]; then
+              mkdir -p "$HOME/.commandcode/hooks"
+              install -m 0644 ${commandCodeSettings} "$HOME/.commandcode/settings.json"
+              install -m 0755 ${commandCodeHook} "$HOME/.commandcode/hooks/strip-coauthor.sh"
             fi
           '';
         };
