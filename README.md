@@ -117,10 +117,11 @@ claude               # installs claude, then runs it
 goose --help
 omp --help
 hunk --help
+elio --help          # x86_64-linux only
 ```
 
-The image ships shims for `claude`, `codex`, `goose`, `omp`, `hunk`, `kimi`,
-`command-code`, `gsd`, and `fff-mcp`, and fetches only the one you run.
+The image ships shims for `claude`, `codex`, `goose`, `omp`, `hunk`, `elio` (x86_64-linux
+only), `kimi`, `command-code`, `gsd`, and `fff-mcp`, and fetches only the one you run.
 
 ## Customizing a Harness from host
 
@@ -314,10 +315,11 @@ Update them to the latest releases:
 ./scripts/update-all.sh
 ```
 
-Each updater also accepts `--version VERSION`, `--rehash`, and `--no-build`:
+Each updater also accepts `--version VERSION`, `--tag TAG`, `--rehash`, and `--no-build`:
 
 ```bash
 ./scripts/update-codex.sh --version 0.140.0
+./scripts/update-omp.sh --tag v16.5.3
 ```
 
 Update the pinned image/package flake inputs on their own:
