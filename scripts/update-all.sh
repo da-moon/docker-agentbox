@@ -28,6 +28,7 @@ for updater in \
   update-hunk.sh \
   update-goose.sh \
   update-omp.sh \
+  update-elio.sh \
   update-kimi-cli.sh \
   update-fff-mcp.sh \
   update-command-code.sh \
