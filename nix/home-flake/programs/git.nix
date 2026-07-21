@@ -23,7 +23,7 @@ in
     # userName = "";
     # userEmail = "";
 
-    extraConfig = {
+    settings = {
       core = {
         autocrlf = false;
         symlinks = true;
