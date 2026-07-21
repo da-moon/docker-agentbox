@@ -1,0 +1,18 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+# nix-daemon longrun: supervised by s6, restarted automatically when it dies.
+set -euo pipefail
+
+# Everything (stdout via the log pipeline, stderr merged into it) lands in
+# /var/log/nix-daemon/current.
+exec 2>&1
+
+export HOME=/root
+export USER=root
+export LOGNAME=root
+
+socket="${NIX_DAEMON_SOCKET_PATH:-/run/nix-daemon/socket}"
+mkdir -p "$(dirname "$socket")"
+rm -f "$socket"
+
+exec env -u NIX_REMOTE nix-daemon --daemon

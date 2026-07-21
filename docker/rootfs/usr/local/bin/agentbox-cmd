@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Wraps every container command (S6_CMD_ARG0): loads the Home Manager session
+# variables, then drops to the unprivileged agent user.
+set -euo pipefail
+
+session_variables="/home/agent/.local/state/nix/profiles/home-manager/home-path/etc/profile.d/hm-session-vars.sh"
+if [ -r "$session_variables" ]; then
+  set +u
+  # shellcheck disable=SC1090
+  . "$session_variables"
+  set -u
+fi
+
+exec su-exec "${AGENT_UID:-1000}:${AGENT_GID:-1000}" "$@"

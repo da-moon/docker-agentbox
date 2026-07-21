@@ -3,9 +3,11 @@ set -euo pipefail
 
 image_ref="${1:-agentbox:latest}"
 store_volume="agentbox-smoke-$$"
+restart_container="agentbox-smoke-restart-$$"
 workspace_dir="$(mktemp -d)"
 
 cleanup() {
+  docker rm -f "$restart_container" >/dev/null 2>&1 || true
   docker volume rm -f "$store_volume" >/dev/null 2>&1 || true
   rm -rf "$workspace_dir"
 }
@@ -47,6 +49,8 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   done
 
   nix --version
+  test -S /run/nix-daemon/socket
+  nix store info >/dev/null
   hunk --version >/dev/null 2>&1
   test -x "$profile/bin/hunk"
 
@@ -112,6 +116,37 @@ docker run --rm -v "$store_volume:/nix" \
   -e AGENT_GID=23456 \
   "$image_ref" \
   bash -lc 'test "$(id -u)" = 1000 && test "$(id -g)" = 23456'
+
+# nix-daemon is supervised by s6: killing it hard must not take nix down for
+# the rest of the container's life.
+docker run --detach --name "$restart_container" -v "$store_volume:/nix" \
+  "$image_ref" sh -c 'sleep 600' >/dev/null
+
+for _ in $(seq 1 100); do
+  if docker exec "$restart_container" test -S /run/nix-daemon/socket; then
+    break
+  fi
+  sleep 0.5
+done
+docker exec "$restart_container" test -S /run/nix-daemon/socket
+
+docker exec -u root "$restart_container" \
+  /command/s6-svc -k /run/service/nix-daemon
+
+daemon_back=""
+for _ in $(seq 1 100); do
+  if docker exec "$restart_container" \
+    sh -c 'test -S /run/nix-daemon/socket && nix store info >/dev/null 2>&1'; then
+    daemon_back=1
+    break
+  fi
+  sleep 0.2
+done
+docker rm -f "$restart_container" >/dev/null
+if [ -z "$daemon_back" ]; then
+  echo "nix-daemon did not come back after being killed" >&2
+  exit 1
+fi
 
 if docker run --rm -v "$store_volume:/nix" -e AGENT_UID=0 "$image_ref" true 2>/dev/null; then
   echo "AGENT_UID=0 unexpectedly accepted" >&2

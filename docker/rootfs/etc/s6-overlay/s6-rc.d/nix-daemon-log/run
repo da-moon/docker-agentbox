@@ -1,0 +1,8 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+# Rotating log sink for the nix-daemon service (the nix-daemon-pipeline
+# consumer). View with: tail -f /var/log/nix-daemon/current
+set -euo pipefail
+
+mkdir -p /var/log/nix-daemon
+exec /command/s6-log -b -- n5 s1048576 T /var/log/nix-daemon

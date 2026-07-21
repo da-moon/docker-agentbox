@@ -13,7 +13,10 @@ RUN nix profile add \
       --profile /nix/var/nix/profiles/agentbox \
       --no-write-lock-file \
       .#agentbox-base \
-    && mkdir -p /opt/agentbox \
+    && s6_overlay="$(nix build --no-link --print-out-paths .#s6-overlay)" \
+    && cp -a "${s6_overlay}/." / \
+    && nix-store --delete "$s6_overlay" \
+    && mkdir -p /opt/agentbox /run \
     && cp -a /tmp/agentbox-build/. /opt/agentbox/ \
     && chmod -R a+rX /opt/agentbox \
     && rm -rf /tmp/agentbox-build /root/.cache/nix \
@@ -34,7 +37,7 @@ RUN for account_file in passwd group shadow gshadow; do \
       --home-dir /home/agent \
       --shell /nix/var/nix/profiles/agentbox/bin/bash \
       agent \
-    && mkdir -p /workspace /nix/var/nix/daemon-socket \
+    && mkdir -p /workspace /run \
     && chown agent:agent /workspace /home/agent \
     && printf '%s\n' \
       'experimental-features = nix-command flakes' \
@@ -50,7 +53,7 @@ RUN for account_file in passwd group shadow gshadow; do \
     && rm -f /nix/var/nix/gcroots/docker/*base-system* \
     && nix-store --gc
 
-COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/agentbox-entrypoint
+COPY docker/rootfs /
 
 # Collapse every layer into one. agentbox installs via flakes (path:/opt/agentbox#...),
 # so the base image's baked-in nixos channel and its ~460MB nixpkgs source are dead
@@ -68,6 +71,9 @@ ENV USER="agent"
 ENV LOGNAME="agent"
 ENV SHELL="/nix/var/nix/profiles/agentbox/bin/bash"
 ENV NIX_REMOTE="daemon"
+ENV NIX_DAEMON_SOCKET_PATH="/run/nix-daemon/socket"
+ENV S6_CMD_ARG0="/command/with-contenv /usr/local/bin/agentbox-cmd"
+ENV S6_BEHAVIOUR_IF_STAGE2_FAILS="2"
 ENV SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
 ENV GIT_SSL_CAINFO="/etc/ssl/certs/ca-bundle.crt"
 ENV NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
@@ -75,5 +81,5 @@ ENV NIX_SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
 WORKDIR /workspace
 USER root
 
-ENTRYPOINT ["/usr/local/bin/agentbox-entrypoint"]
+ENTRYPOINT ["/usr/local/bin/agentbox-init"]
 CMD ["bash"]

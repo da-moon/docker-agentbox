@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
+# Runs once at container start as an s6-rc oneshot, after the nix-daemon
+# longrun is up. Failing here stops the container
+# (S6_BEHAVIOUR_IF_STAGE2_FAILS=2).
 set -euo pipefail
 
 readonly AGENT_USER="agent"
 readonly AGENT_HOME="/home/${AGENT_USER}"
 readonly WORKSPACE="/workspace"
-readonly DAEMON_SOCKET="/nix/var/nix/daemon-socket/socket"
-readonly DAEMON_LOG="/tmp/nix-daemon.log"
+readonly DAEMON_SOCKET="${NIX_DAEMON_SOCKET_PATH:-/run/nix-daemon/socket}"
 
 requested_uid="${AGENT_UID:-1000}"
 requested_gid="${AGENT_GID:-1000}"
@@ -13,12 +15,6 @@ requested_gid="${AGENT_GID:-1000}"
 is_unsigned_integer() {
   [[ "$1" =~ ^[0-9]+$ ]]
 }
-
-if [ "$(id -u)" -ne 0 ]; then
-  echo "agentbox-entrypoint must start as root so it can launch nix-daemon and remap the runtime UID/GID; it drops to the unprivileged agent user before running anything." >&2
-  echo "Do not use docker run --user." >&2
-  exit 1
-fi
 
 if ! is_unsigned_integer "$requested_uid" || ! is_unsigned_integer "$requested_gid"; then
   echo "AGENT_UID and AGENT_GID must be non-negative integers." >&2
@@ -43,37 +39,22 @@ elif [ "$current_gid" != "$requested_gid" ]; then
   usermod --gid "$requested_gid" "$AGENT_USER"
 fi
 
-mkdir -p "$AGENT_HOME" "$WORKSPACE" "$(dirname "$DAEMON_SOCKET")"
+mkdir -p "$AGENT_HOME" "$WORKSPACE"
 chown "$requested_uid:$requested_gid" "$AGENT_HOME" "$WORKSPACE"
 
-export HOME=/root
-export USER=root
-export LOGNAME=root
-
-rm -f "$DAEMON_SOCKET"
-env -u NIX_REMOTE nix-daemon --daemon >"$DAEMON_LOG" 2>&1 &
-nix_daemon_pid="$!"
-
+# The nix-daemon longrun is supervised by s6 and restarted on failure, so the
+# socket appears unless the daemon is hopelessly broken.
 for _ in $(seq 1 100); do
   if [ -S "$DAEMON_SOCKET" ]; then
     break
-  fi
-  if ! kill -0 "$nix_daemon_pid" 2>/dev/null; then
-    wait "$nix_daemon_pid"
-    cat "$DAEMON_LOG" >&2
-    echo "nix-daemon exited before creating ${DAEMON_SOCKET}." >&2
-    exit 1
   fi
   sleep 0.05
 done
 
 if [ ! -S "$DAEMON_SOCKET" ]; then
-  cat "$DAEMON_LOG" >&2
   echo "Timed out waiting for nix-daemon socket at ${DAEMON_SOCKET}." >&2
   exit 1
 fi
-
-export NIX_REMOTE=daemon
 
 # Home Manager owns the per-user environment: the startup packages and the
 # seeded harness defaults, defined by the flake template in
@@ -90,6 +71,8 @@ apply_home_manager() {
     ;;
   esac
   flake_ref="$AGENT_HOME/.config/home-manager#agent"
+  # AGENTBOX_SYSTEM expands in the inner sh, not here.
+  # shellcheck disable=SC2016
   su-exec "$1" env HOME="$AGENT_HOME" AGENTBOX_SYSTEM="$hm_system" sh -c '
     [ -e "$HOME/.config/home-manager/flake.nix" ] && exit 0
     mkdir -p "$HOME/.config/home-manager"
@@ -104,20 +87,7 @@ apply_home_manager() {
     echo "agentbox: home-manager switch failed (continuing)" >&2
 }
 
-load_home_manager_session_variables() {
-  local session_variables="$AGENT_HOME/.local/state/nix/profiles/home-manager/home-path/etc/profile.d/hm-session-vars.sh"
-  if [ -r "$session_variables" ]; then
-    set +u
-    # shellcheck disable=SC1090
-    . "$session_variables"
-    set -u
-  fi
-}
-
 export HOME="$AGENT_HOME"
 export USER="$AGENT_USER"
 export LOGNAME="$AGENT_USER"
 apply_home_manager "${requested_uid}:${requested_gid}"
-load_home_manager_session_variables
-
-exec tini -- su-exec "${requested_uid}:${requested_gid}" "$@"

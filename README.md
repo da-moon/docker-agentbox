@@ -46,7 +46,7 @@ The Dockerfile pins the multi-architecture `nixos/nix:2.34.7` digest, so native
 Linux/macOS Bash:
 
 ```bash
-docker run --detach -it --name "$(basename `pwd`)-agentbox" -e AGENT_UID="$(id -u)"  -e AGENT_GID="$(id -g)"  -v "$PWD:/workspace"  --env-file <(env | grep API_KEY)  -v agentbox-nix:/nix  agentbox:latest
+docker run --detach -it --name "$(basename `pwd`)-agentbox" -e AGENT_UID="$(id -u)"  -e AGENT_GID="$(id -g)"  -v "$PWD:/workspace"  --env-file <(env | grep API_KEY)  -v "$(basename `pwd`)-agentbox-nix:/nix"  agentbox:latest
 ```
 
 Windows PowerShell 5:
@@ -63,7 +63,7 @@ if ($apiEnv) {
 docker run --detach -it --name $name `
   -v "${PWD}:/workspace" `
   --env-file $envFile `
-  -v agentbox-nix:/nix `
+  -v "$name-nix:/nix" `
   agentbox:latest
 
 Remove-Item $envFile -ErrorAction SilentlyContinue
@@ -75,6 +75,12 @@ Remove-Item $envFile -ErrorAction SilentlyContinue
 
 On Windows, the snippet omits `AGENT_UID` and `AGENT_GID`; Docker Desktop
 handles bind mount permissions differently from Linux.
+
+> The snippets give each project its own `/nix` volume. Do not share one named
+> `/nix` volume between concurrently running containers: every container runs
+> its own nix-daemon, and two daemons on one store database is unsupported and
+> can corrupt it. Reusing a volume across *sequential* runs of the same
+> project is exactly what it is for.
 
 - You can attach to the container with the following
 
@@ -107,6 +113,24 @@ $name = "$(Split-Path -Leaf (Get-Location))-agentbox"
 docker rm -f $name
 ```
 
+## Process supervision
+
+The container boots [s6-overlay](https://github.com/just-containers/s6-overlay)
+as PID 1 (pinned in `nix/packages/s6-overlay/default.nix`). It runs nix-daemon
+as a supervised service and restarts it automatically if it crashes or is
+killed (for example by the OOM killer) — a dead daemon no longer means
+restarting the container. Useful details:
+
+- The daemon socket is container-local at `/run/nix-daemon/socket`
+  (`NIX_DAEMON_SOCKET_PATH`), not on the `/nix` volume.
+- Daemon logs go to `/var/log/nix-daemon/current` (rotated); nothing is lost
+  when the daemon restarts.
+- To restart the daemon by hand in a running container:
+
+  ```bash
+  docker exec -u root "$(basename `pwd`)-agentbox" /command/s6-svc -r /run/service/nix-daemon
+  ```
+
 ## Running a harness
 
 Type the harness you want. The first run installs it, then hands off to it:
@@ -138,7 +162,8 @@ These snippets copy the hook scripts; you need to get a shell into container, ru
 ## Home Manager
 
 The per-user environment inside the container is a Home Manager configuration.
-On first start the entrypoint copies `nix/home-flake/flake.nix`,
+On first start the boot setup service (`agentbox-setup`, an s6 oneshot) copies
+`nix/home-flake/flake.nix`,
 `nix/home-flake/flake.lock`, and `nix/home-flake/programs/` to
 `~/.config/home-manager/` - owned by the `agent` user - and applies it with
 `home-manager switch -b backup --flake ~/.config/home-manager#agent`. It
@@ -267,8 +292,8 @@ that file outranks the seeded default and the path does not exist there.
 Baked in:
 
 - Nix and Home Manager
-- Bash, coreutils, `sed`, CA certificates, UID/GID management, `su-exec`, and
-  `tini`
+- Bash, coreutils, `sed`, CA certificates, UID/GID management, and `su-exec`
+- s6-overlay as PID 1, supervising nix-daemon (see "Process supervision")
 - Lazy shims for the agent harnesses
 
 Installed into the container at startup by Home Manager:
@@ -336,7 +361,9 @@ nix flake update path:./nix/home-flake
 
 The `scripts/update-*.sh` helpers are Bash scripts. On Windows, run them from
 WSL or Git Bash. The `nix flake update ...` commands use the same syntax from
-any shell that has `nix`.
+any shell that has `nix`. The s6-overlay pin in
+`nix/packages/s6-overlay/default.nix` and the base image digest in the
+Dockerfile are bumped manually, with fresh hashes.
 
 ## Repository layout
 
@@ -344,7 +371,13 @@ Nix is an implementation detail of the image, so all of it lives under `nix/`.
 `nix/flake.nix` is the minimal image and package source, pinned to NixOS 26.05:
 the Dockerfile builds `agentbox-base` from it and copies it to `/opt/agentbox`,
 where the shims resolve harness installs at runtime. `nix/packages/*.nix` stays
-as the package expression profile for custom flakes and update scripts.
+as the package expression profile for custom flakes and update scripts;
+`nix/packages/s6-overlay` fetches the pinned s6-overlay tarballs that the
+Dockerfile merges into the image rootfs. `docker/rootfs/` holds the container
+plumbing copied into the image: the s6 service definitions under
+`etc/s6-overlay/s6-rc.d/` (the `nix-daemon` longrun with its log pipeline and
+the `agentbox-setup` boot oneshot) and the `agentbox-init`/`agentbox-setup`/
+`agentbox-cmd` wrappers under `usr/local/bin/`.
 `nix/home-flake/` is the per-user Home Manager flake that ends up in
 `~/.config/home-manager` inside the container; `programs/` contains one module
 per enabled Home Manager program plus native Nix settings for the seeded Helix
@@ -368,7 +401,7 @@ Windows PowerShell 5:
 
 ```powershell
 docker build --progress plain --tag agentbox:latest .
-docker run --rm -v agentbox-nix:/nix agentbox:latest bash -lc 'command -v hx && test "$EDITOR" = hx && command -v codex'
+docker run --rm agentbox:latest bash -lc 'command -v hx && test "$EDITOR" = hx && command -v codex'
 ```
 
 The full smoke test is a Bash script; run `./scripts/smoke-test.sh

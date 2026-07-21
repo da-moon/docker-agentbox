@@ -63,10 +63,13 @@
             pkgs.cacert
             pkgs.shadow
             pkgs.su-exec
-            pkgs.tini
 
             home-manager.packages.${system}.home-manager
           ];
+
+          # PID 1 and nix-daemon supervision; copied into the image rootfs by
+          # the Dockerfile, not linked into the agentbox profile.
+          s6-overlay = pkgs.callPackage ./packages/s6-overlay { inherit system; };
 
           harnessByCommand = lib.mapAttrs' (
             attr: pkg: lib.nameValuePair (pkg.meta.mainProgram or pkg.pname) attr
@@ -98,7 +101,7 @@
         in
         {
           default = agentbox-base;
-          inherit agentbox-base;
+          inherit agentbox-base s6-overlay;
         }
         // harnessPackages
       );
@@ -112,13 +115,15 @@
           };
 
           # Builds the same configuration the template in nix/home-flake
-          # produces once the entrypoint instantiates it for this system.
+          # produces once the container's setup service instantiates it for
+          # this system.
           home-agent =
             (builtins.getAttr "agent-${system}" homeFlakeOutputs.homeConfigurations).activationPackage;
         in
         {
           inherit (packages)
             agentbox-base
+            s6-overlay
             claude-code
             codex
             hunk

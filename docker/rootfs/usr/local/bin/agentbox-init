@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "agentbox-init must start as root so s6-overlay can launch nix-daemon and remap the runtime UID/GID; the container drops to the unprivileged agent user before running anything." >&2
+  echo "Do not use docker run --user." >&2
+  exit 1
+fi
+
+exec /init "$@"
