@@ -7,7 +7,7 @@
   system,
 }:
 let
-  version = "2.1.209";
+  version = "2.1.216";
 
   releasePlatformBySystem = {
     x86_64-linux = "linux-x64";
@@ -16,8 +16,8 @@ let
 
   binaryHashBySystem = {
     # scripts/update-claude-code.sh managed hashes.
-    x86_64-linux = "sha256-uIL0uLJ3cviXVA31DyQAAgb0OpQm6PfRm9BllZtp6d0=";
-    aarch64-linux = "sha256-J4y2jvchfPzFyUnSVzu45ZqLEwX3Zon7qI63IrDZ4vA=";
+    x86_64-linux = "sha256-dN7KRSILgIDsdasJm9WlmA5BorWHmEagCPsRXUNt4IU=";
+    aarch64-linux = "sha256-njpq7MUWT2B+EYOuogksfXcF0UblBKYgffKRd2mWqOo=";
   };
 
   releasePlatform =

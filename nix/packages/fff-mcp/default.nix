@@ -5,16 +5,16 @@
   system,
 }:
 let
-  version = "0.9.6";
+  version = "0.10.1";
 
   releaseBySystem = {
     x86_64-linux = {
       target = "x86_64-unknown-linux-musl";
-      hash = "sha256-ECzq8XPvd2vsszIiFun2tcrvmXxADF0V8RLOTeQKH1o=";
+      hash = "sha256-wXY3wzOvu73qSwPPPhVzJAxBR64SF1bjY6r6PJ0O+1g=";
     };
     aarch64-linux = {
       target = "aarch64-unknown-linux-musl";
-      hash = "sha256-qYEMkFavptnorB56Px8V+Oy/3BalkunSbkskNO+XpnU=";
+      hash = "sha256-KiUBkQHuk3MyfavXrB1IAGOGiOlbZ7+zvsRBv42Tjyg=";
     };
   };
 
