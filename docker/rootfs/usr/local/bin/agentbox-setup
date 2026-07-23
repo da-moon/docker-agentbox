@@ -87,7 +87,24 @@ apply_home_manager() {
     echo "agentbox: home-manager switch failed (continuing)" >&2
 }
 
+# The agentbox overlay flake mirrors the Home Manager template: the immutable
+# image copy at /opt/agentbox is cloned to ~/.config/agentbox on first start so
+# the agent owns the harness version pins and can evolve them with the
+# `agentbox` command. Copied only when absent; delete it to restore the image
+# defaults on the next start.
+seed_agentbox_overlay() {
+  # $HOME expands in the inner sh, not here.
+  # shellcheck disable=SC2016
+  su-exec "$1" env HOME="$AGENT_HOME" sh -c '
+    dest="$HOME/.config/agentbox"
+    [ -e "$dest/flake.nix" ] && exit 0
+    mkdir -p "$HOME/.config"
+    cp -R /opt/agentbox "$dest"
+  ' || echo "agentbox: overlay template install failed (continuing)" >&2
+}
+
 export HOME="$AGENT_HOME"
 export USER="$AGENT_USER"
 export LOGNAME="$AGENT_USER"
+seed_agentbox_overlay "${requested_uid}:${requested_gid}"
 apply_home_manager "${requested_uid}:${requested_gid}"

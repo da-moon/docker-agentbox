@@ -8,6 +8,7 @@ ENV PATH="/home/agent/.local/state/nix/profiles/agentbox/bin:/nix/var/nix/profil
 WORKDIR /tmp/agentbox-build
 
 COPY nix ./
+COPY scripts ./scripts
 
 RUN nix profile add \
       --profile /nix/var/nix/profiles/agentbox \

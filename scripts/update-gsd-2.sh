@@ -6,7 +6,8 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/gsd-2/default.nix"
+readonly flake_dir="${AGENTBOX_FLAKE_DIR:-${repo_root}/nix}"
+readonly package_file="${flake_dir}/packages/gsd-2/default.nix"
 readonly registry_url="https://registry.npmjs.org/@opengsd/gsd-pi"
 readonly placeholder_hash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
@@ -128,7 +129,7 @@ sed -i -E \
   "$package_file"
 
 if [ "$no_build" = false ]; then
-  verify_package_build "$repo_root" gsd-2
+  verify_package_build "$flake_dir" gsd-2
 fi
 
 committed=true

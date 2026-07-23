@@ -78,10 +78,23 @@ docker run --rm -v "$store_volume:/nix" "$image_ref" bash -lc '
   test ! -e "$HOME/.config/home-manager/home.nix"
   grep -q "alias -- hm-switch=" "$HOME/.bashrc"
   grep -q "alias -- hm-update=" "$HOME/.bashrc"
+
+  # agentbox harness version management: CLI on PATH, mutable overlay flake and
+  # updater scripts seeded to the home directory, and `agentbox list` works
+  # without triggering a lazy harness install.
+  command -v agentbox >/dev/null
+  test -w "$HOME/.config/agentbox/flake.nix"
+  test -w "$HOME/.config/agentbox/packages/claude-code/default.nix"
+  test -x "$HOME/.config/agentbox/scripts/update-claude-code.sh"
+  agentbox list | grep "^claude-code" >/dev/null
+  test ! -e "$profile/bin/claude"
+
   test -w "$HOME/.claude/settings.json"
   test "$(jq -r .permissions.defaultMode "$HOME/.claude/settings.json")" \
     = "auto"
   test "$(jq -r .autoMemoryDirectory "$HOME/.claude/settings.json")" = "null"
+  test "$(jq -r '.env.DISABLE_INSTALLATION_CHECKS' "$HOME/.claude/settings.json")" = "1"
+  test "$(jq -r '.env.DISABLE_UPDATES' "$HOME/.claude/settings.json")" = "1"
   grep -qx "approval_policy = \"never\"" "$HOME/.codex/config.toml"
   grep -qx "default_permission_mode = \"yolo\"" "$HOME/.kimi-code/config.toml"
 

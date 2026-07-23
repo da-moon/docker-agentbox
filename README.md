@@ -147,6 +147,37 @@ elio --help          # x86_64-linux only
 The image ships shims for `claude`, `codex`, `goose`, `omp`, `hunk`, `elio` (x86_64-linux
 only), `kimi`, `command-code`, `gsd`, and `fff-mcp`, and fetches only the one you run.
 
+## Managing harness versions
+
+Harness versions are pinned in Nix (`nix/packages/<name>/default.nix`) and baked
+into the image. To change them in a running container - update to the latest
+release, or pin an older one - use the `agentbox` command, without rebuilding the
+image:
+
+```bash
+agentbox list                  # pinned vs image-baseline versions, and what is installed
+agentbox list --check          # also query each upstream project for its latest release
+agentbox update claude-code    # update one harness to the latest release
+agentbox update --all          # update every harness
+agentbox pin claude-code 2.1.200  # install a specific (e.g. older) version
+agentbox rollback              # revert the last change (previous profile generation)
+agentbox reset claude-code     # restore the image-baseline version (--all for every harness)
+```
+
+`<name>` is a package attribute (`claude-code`, `kimi-cli`, `codex`, ...), not the
+command name. Under the hood `agentbox` runs the same `scripts/update-<name>.sh`
+updaters the repo uses - fetching the release, recomputing the Nix hashes, and
+verifying the build - then installs the result into the per-user Nix profile that
+takes precedence on `PATH`. `rollback` uses the Nix profile's previous generation,
+so it undoes the most recent change; use `pin` to reach a specific older version.
+
+Like the Home Manager flake, the mutable copy is seeded on first start: the boot
+setup service clones the immutable image copy at `/opt/agentbox` to
+`~/.config/agentbox/` (owned by the `agent` user) when it does not exist yet, so
+`agentbox` edits and the installed versions survive restarts when the home
+directory persists (for example on a volume). Delete `~/.config/agentbox` to
+restore the image defaults on the next start, or use `agentbox reset`.
+
 ## Customizing a Harness from host
 
 - Copy host's hooks into the harness
@@ -213,7 +244,8 @@ commit/PR attribution is disabled:
 
 - `~/.claude/settings.json`: `bypassPermissions` mode, attribution off
   (including the session-URL trailer), always-on thinking at `xhigh` effort,
-  auto-updater off, and auto memory in the workspace (next section).
+  auto-updater, self-update, and installation checks off, and auto memory in the
+  workspace (next section).
 - `~/.codex/config.toml`: `approval_policy = "never"`,
   `sandbox_mode = "danger-full-access"`, API-key auth preferred, commit
   attribution off.

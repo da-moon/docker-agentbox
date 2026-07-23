@@ -6,7 +6,8 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/kimi-cli/default.nix"
+readonly flake_dir="${AGENTBOX_FLAKE_DIR:-${repo_root}/nix}"
+readonly package_file="${flake_dir}/packages/kimi-cli/default.nix"
 readonly download_base_url="https://code.kimi.com/kimi-code"
 
 target_version=""
@@ -127,7 +128,7 @@ chmod --reference="$package_file" "$temp_file"
 mv "$temp_file" "$package_file"
 
 if [ "$no_build" = false ]; then
-  verify_package_build "$repo_root" kimi-cli
+  verify_package_build "$flake_dir" kimi-cli
 fi
 
 committed=true

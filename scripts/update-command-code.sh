@@ -6,7 +6,8 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/command-code/default.nix"
+readonly flake_dir="${AGENTBOX_FLAKE_DIR:-${repo_root}/nix}"
+readonly package_file="${flake_dir}/packages/command-code/default.nix"
 readonly registry_url="https://registry.npmjs.org/command-code"
 readonly placeholder_hash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
@@ -128,7 +129,7 @@ sed -i -E \
   "$package_file"
 
 if [ "$no_build" = false ]; then
-  verify_package_build "$repo_root" command-code
+  verify_package_build "$flake_dir" command-code
 fi
 
 committed=true

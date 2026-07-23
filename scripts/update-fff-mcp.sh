@@ -6,7 +6,8 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/fff-mcp/default.nix"
+readonly flake_dir="${AGENTBOX_FLAKE_DIR:-${repo_root}/nix}"
+readonly package_file="${flake_dir}/packages/fff-mcp/default.nix"
 readonly releases_api="https://api.github.com/repos/dmtrKovalenko/fff.nvim/releases/latest"
 readonly download_base_url="https://github.com/dmtrKovalenko/fff.nvim/releases/download"
 
@@ -130,7 +131,7 @@ sed -i -E \
   "$package_file"
 
 if [ "$no_build" = false ]; then
-  verify_package_build "$repo_root" fff-mcp
+  verify_package_build "$flake_dir" fff-mcp
 fi
 
 committed=true

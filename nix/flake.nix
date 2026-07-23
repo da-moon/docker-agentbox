@@ -42,19 +42,22 @@
               };
             });
 
-          harnessPackages = lib.mapAttrs (_: clearUnfree) ({
-            claude-code = pkgs.callPackage ./packages/claude-code { inherit system; };
-            codex = pkgs.callPackage ./packages/codex { inherit system; };
-            hunk = pkgs.callPackage ./packages/hunk { inherit system; };
-            goose = pkgs.callPackage ./packages/goose { inherit system; };
-            omp = pkgs.callPackage ./packages/omp { inherit system; };
-            kimi-cli = pkgs.callPackage ./packages/kimi-cli { inherit system; };
-            command-code = pkgs.callPackage ./packages/command-code { inherit system; };
-            gsd-2 = pkgs.callPackage ./packages/gsd-2 { inherit system; };
-            fff-mcp = pkgs.callPackage ./packages/fff-mcp { inherit system; };
-          } // lib.optionalAttrs (system == "x86_64-linux") {
-            elio = pkgs.callPackage ./packages/elio { inherit system; };
-          });
+          harnessPackages = lib.mapAttrs (_: clearUnfree) (
+            {
+              claude-code = pkgs.callPackage ./packages/claude-code { inherit system; };
+              codex = pkgs.callPackage ./packages/codex { inherit system; };
+              hunk = pkgs.callPackage ./packages/hunk { inherit system; };
+              goose = pkgs.callPackage ./packages/goose { inherit system; };
+              omp = pkgs.callPackage ./packages/omp { inherit system; };
+              kimi-cli = pkgs.callPackage ./packages/kimi-cli { inherit system; };
+              command-code = pkgs.callPackage ./packages/command-code { inherit system; };
+              gsd-2 = pkgs.callPackage ./packages/gsd-2 { inherit system; };
+              fff-mcp = pkgs.callPackage ./packages/fff-mcp { inherit system; };
+            }
+            // lib.optionalAttrs (system == "x86_64-linux") {
+              elio = pkgs.callPackage ./packages/elio { inherit system; };
+            }
+          );
 
           bootTools = [
             pkgs.bashInteractive
@@ -93,9 +96,25 @@
             done
           '';
 
+          agentbox-cli = pkgs.writeShellApplication {
+            name = "agentbox";
+            runtimeInputs = [
+              pkgs.jq
+              pkgs.curl
+              pkgs.gnused
+              pkgs.gnugrep
+              pkgs.gawk
+              pkgs.coreutils
+            ];
+            text = "manifest=${agentbox-manifest}\n" + builtins.readFile ./agentbox-cli.sh;
+          };
+
           agentbox-base = pkgs.buildEnv {
             name = "agentbox-base";
-            paths = bootTools ++ [ agentbox-shims ];
+            paths = bootTools ++ [
+              agentbox-shims
+              agentbox-cli
+            ];
             pathsToLink = [ "/bin" ];
           };
         in

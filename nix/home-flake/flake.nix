@@ -44,8 +44,8 @@
             builtins.toJSON {
               permissions.defaultMode = "auto";
               skipDangerousModePermissionPrompt = true;
-              skipAutoPermissionPrompt = true ;
-              skipWorkflowUsageWarning = true ;
+              skipAutoPermissionPrompt = true;
+              skipWorkflowUsageWarning = true;
               attribution = {
                 commit = "";
                 pr = "";
@@ -53,7 +53,11 @@
               };
               alwaysThinkingEnabled = true;
               effortLevel = "xhigh";
-              env.DISABLE_AUTOUPDATER = "1";
+              env = {
+                DISABLE_AUTOUPDATER = "1";
+                DISABLE_INSTALLATION_CHECKS = "1";
+                DISABLE_UPDATES = "1";
+              };
             }
           );
 
@@ -124,7 +128,7 @@
           home.sessionVariables = {
             EDITOR = "hx";
             VISUAL = "hx";
-            COLORTERM= "truecolor" ;
+            COLORTERM = "truecolor";
           };
 
           # The packages installed at container start. pkgs follows the

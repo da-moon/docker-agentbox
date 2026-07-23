@@ -6,7 +6,8 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 # shellcheck source=scripts/lib/update-common.sh
 source "${script_dir}/lib/update-common.sh"
 
-readonly package_file="${repo_root}/nix/packages/codex/default.nix"
+readonly flake_dir="${AGENTBOX_FLAKE_DIR:-${repo_root}/nix}"
+readonly package_file="${flake_dir}/packages/codex/default.nix"
 readonly releases_api="https://api.github.com/repos/openai/codex/releases/latest"
 
 target_version=""
@@ -131,7 +132,7 @@ sed -i -E \
   "$package_file"
 
 if [ "$no_build" = false ]; then
-  verify_package_build "$repo_root" codex
+  verify_package_build "$flake_dir" codex
 fi
 
 committed=true
