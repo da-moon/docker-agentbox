@@ -6,16 +6,16 @@
   zstd,
 }:
 let
-  version = "0.144.6";
+  version = "0.145.0";
 
   releaseBySystem = {
     aarch64-linux = {
       arch = "aarch64";
-      hash = "sha256-Ftvt1Bu95ux4aZsSGex5lKXxJqAbDn7AtSWNHPdyLdk=";
+      hash = "sha256-hObMbiGOCBQJguLSjENBqdjI1kXdBgNt7WKcbX3IqPw=";
     };
     x86_64-linux = {
       arch = "x86_64";
-      hash = "sha256-Bj2jWq/jaFMbA7XwHHu0X9AbN7cvOMip3ilYyzQhrck=";
+      hash = "sha256-L/OOj6b7dwkpKWP/EzzWZe+FEdCVT7s83QPYBMM0w20=";
     };
   };
 

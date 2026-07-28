@@ -9,13 +9,13 @@
 }:
 let
   pname = "command-code";
-  version = "0.52.3";
+  version = "1.4.5";
   nodejs = nodejs_22;
 
   outputHashBySystem = {
     # scripts/update-command-code.sh managed hashes.
     aarch64-linux = lib.fakeHash;
-    x86_64-linux = "sha256-bGpZAVSBO23I+HL+GgMClKV+JbUkoYUc2ygX29SDRKw=";
+    x86_64-linux = "sha256-en6uwafjNoykBwh9/3fXx9wcq+YSmrm1MEQwfQg3hN4=";
   };
 
   npmDeps = stdenv.mkDerivation {
@@ -23,7 +23,7 @@ let
 
     src = fetchurl {
       url = "https://registry.npmjs.org/${pname}/-/${pname}-${version}.tgz";
-      hash = "sha256-tKF9bNttn+CkQh4C4fqKBaMUTnuu2yV6GKMQsagoRNs=";
+      hash = "sha256-w7waGfGZZHY9i/TLLIHn3KHtzN16U4PTmWnc4ZZP+gM=";
     };
 
     nativeBuildInputs = [

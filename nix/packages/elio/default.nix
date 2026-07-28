@@ -6,12 +6,12 @@
   system,
 }:
 let
-  version = "1.11.1";
+  version = "1.11.2";
 
   releaseBySystem = {
     x86_64-linux = {
       target = "x86_64-unknown-linux-gnu";
-      hash = "sha256-3wSMP8oTfc3a1yQY0doywsWbBTWb74G9boaKYJlAln4=";
+      hash = "sha256-9cW/xUA9p0LEYI3/j4MGPVZvcyJpV1JYKYBuHur4sTM=";
     };
   };
 
