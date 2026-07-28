@@ -82,22 +82,26 @@ handles bind mount permissions differently from Linux.
 > can corrupt it. Reusing a volume across *sequential* runs of the same
 > project is exactly what it is for.
 
-- You can attach to the container with the following
+- You can open a shell in the container with the following
 
 Linux/macOS Bash:
 
 ```bash
-docker attach "$(basename `pwd`)-agentbox"
+docker exec -it "$(basename `pwd`)-agentbox" bash -l
 ```
 
 Windows PowerShell 5:
 
 ```powershell
 $name = "$(Split-Path -Leaf (Get-Location))-agentbox"
-docker attach $name
+docker exec -it $name bash -l
 ```
 
-- To detach safely, press `Ctrl+P`, then `Ctrl+Q`
+- Exiting the shell leaves the container running; open as many concurrent
+  shells as you like
+- Avoid `docker attach`: its stdio stream is non-blocking, which crashes
+  full-screen programs such as Zellij with a `WouldBlock` panic, and exiting
+  the attached shell stops the container
 - You can remove the container by running the following
 
 Linux/macOS Bash:
