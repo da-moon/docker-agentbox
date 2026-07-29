@@ -81,6 +81,12 @@ handles bind mount permissions differently from Linux.
 > its own nix-daemon, and two daemons on one store database is unsupported and
 > can corrupt it. Reusing a volume across *sequential* runs of the same
 > project is exactly what it is for.
+>
+> A reused volume also keeps the previous image's base profile (harness shims,
+> the `agentbox` CLI, boot tools), hiding the newer image's `/nix`. At
+> container start, `agentbox-setup` detects shims missing from the volume and
+> refreshes the base profile from the current image automatically, so a
+> rebuilt image works with an old volume.
 
 - You can open a shell in the container with the following
 

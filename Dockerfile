@@ -17,8 +17,10 @@ RUN nix profile add \
     && s6_overlay="$(nix build --no-link --print-out-paths .#s6-overlay)" \
     && cp -a "${s6_overlay}/." / \
     && nix-store --delete "$s6_overlay" \
+    && harness_commands="$(nix build --no-link --print-out-paths .#agentbox-commands)" \
     && mkdir -p /opt/agentbox /run \
     && cp -a /tmp/agentbox-build/. /opt/agentbox/ \
+    && cp "$harness_commands" /opt/agentbox/harness-commands \
     && chmod -R a+rX /opt/agentbox \
     && rm -rf /tmp/agentbox-build /root/.cache/nix \
     && nix-store --gc

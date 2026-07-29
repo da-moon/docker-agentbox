@@ -56,6 +56,39 @@ if [ ! -S "$DAEMON_SOCKET" ]; then
   exit 1
 fi
 
+# The base profile (harness shims, the agentbox CLI, boot tools) lives on the
+# /nix volume, so a volume created by an older image keeps that image's
+# profile: shims for harnesses added later are missing even though the current
+# image carries them. The image bakes the expected harness command names into
+# /opt/agentbox/harness-commands (never shadowed by the volume); refresh the
+# base profile from the image flake when it disagrees with the volume's
+# profile. Best-effort: a failure (e.g. no network) leaves the old profile.
+refresh_base_profile() {
+  local profile="/nix/var/nix/profiles/agentbox"
+  local commands="/opt/agentbox/harness-commands"
+  local cmd missing=""
+  [ -e "$commands" ] || return 0
+  while IFS= read -r cmd; do
+    if [ -n "$cmd" ] && [ ! -e "$profile/bin/$cmd" ]; then
+      missing="$missing $cmd"
+    fi
+  done < "$commands"
+  [ -e "$profile/bin/agentbox" ] || missing="$missing agentbox"
+  [ -n "$missing" ] || return 0
+  echo "agentbox: refreshing the base profile (missing:${missing})..."
+  # root owns /root; the agent home belongs to the unprivileged user.
+  if HOME=/root nix profile add \
+    --profile "$profile" \
+    --no-write-lock-file \
+    "path:/opt/agentbox#agentbox-base"; then
+    echo "agentbox: base profile refreshed"
+  else
+    echo "agentbox: base profile refresh failed; continuing with the existing profile" >&2
+  fi
+}
+
+refresh_base_profile
+
 # Home Manager owns the per-user environment: the startup packages and the
 # seeded harness defaults, defined by the flake template in
 # /opt/agentbox/home-flake. The template files are copied to

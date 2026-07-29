@@ -80,6 +80,14 @@
 
           agentbox-manifest = pkgs.writeText "agentbox-harnesses.json" (builtins.toJSON harnessByCommand);
 
+          # Plain list of harness command names. Baked into the image at
+          # /opt/agentbox/harness-commands (see the Dockerfile), where
+          # agentbox-setup reads it at container start to detect a stale base
+          # profile on a reused /nix volume.
+          agentbox-commands = pkgs.writeText "agentbox-harness-commands" (
+            lib.concatStringsSep "\n" (lib.attrNames harnessByCommand) + "\n"
+          );
+
           agentbox-shim = pkgs.writeShellApplication {
             name = "agentbox-shim";
             runtimeInputs = [
@@ -120,7 +128,7 @@
         in
         {
           default = agentbox-base;
-          inherit agentbox-base s6-overlay;
+          inherit agentbox-base s6-overlay agentbox-commands;
         }
         // harnessPackages
       );
