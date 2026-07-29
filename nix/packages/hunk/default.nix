@@ -6,18 +6,18 @@
   system,
 }:
 let
-  version = "0.17.6";
+  version = "0.17.7";
 
   releaseBySystem = {
     x86_64-linux = {
       asset = "hunkdiff-linux-x64.tar.gz";
       sourceRoot = "hunkdiff-linux-x64";
-      hash = "sha256-/TcD0a+1HROoD7SYGMNJutzFdCw+EA7UYYT3MYwm7mo=";
+      hash = "sha256-adR4jOV9SHLIErfyKy4t3/8ocRcznDNulVbcqCYOTE8=";
     };
     aarch64-linux = {
       asset = "hunkdiff-linux-arm64.tar.gz";
       sourceRoot = "hunkdiff-linux-arm64";
-      hash = "sha256-Et+gyvdAAEVRtmI+3yI+cPUi0LaJJoLm2/owK9mset4=";
+      hash = "sha256-/ZvprVB8kJNSQkxnf4pARfOgO+x9AkjsPYTXYGoaqgU=";
     };
   };
 
