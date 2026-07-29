@@ -12,7 +12,7 @@ Claude Code.
 Linux/macOS Bash:
 
 ```bash
-./scripts/build.sh
+PLATFORMS=linux/amd64 ./scripts/build.sh   # linux/arm64 on Apple Silicon
 ```
 
 Windows PowerShell 5:
@@ -21,13 +21,14 @@ Windows PowerShell 5:
 docker build --progress plain --tag agentbox:latest .
 ```
 
-This builds `agentbox:latest`. Override the name or tag with `IMAGE_NAME` and
-`IMAGE_TAG`, and pass extra Docker flags after the script name:
+This builds a loadable single-architecture `agentbox:latest`. Override the
+name or tag with `IMAGE_NAME` and `IMAGE_TAG`, and pass extra Docker flags
+after the script name:
 
 Linux/macOS Bash:
 
 ```bash
-IMAGE_TAG=dev ./scripts/build.sh --no-cache
+IMAGE_TAG=dev PLATFORMS=linux/amd64 ./scripts/build.sh --no-cache
 ```
 
 Windows PowerShell 5:
@@ -38,15 +39,24 @@ docker build --progress plain --tag agentbox:dev --no-cache .
 
 The Dockerfile pins the multi-architecture `nixos/nix:2.34.7` digest, so native
 `linux/amd64` and `linux/arm64` builds select the matching image and binaries.
+Without `PLATFORMS`, the script builds both architectures and pushes the
+manifest list to a registry - set `IMAGE_NAME` to yours first (see
+Verification).
 
 ## Run
 
 - Start a containerized environment for your directory
 
-Linux/macOS Bash:
+Linux Bash:
 
 ```bash
 docker run --detach -it --name "$(basename `pwd`)-agentbox" -e AGENT_UID="$(id -u)"  -e AGENT_GID="$(id -g)"  -v "$PWD:/workspace"  --env-file <(env | grep API_KEY)  -v "$(basename `pwd`)-agentbox-nix:/nix"  agentbox:latest
+```
+
+macOS Bash/zsh (Docker Desktop):
+
+```bash
+docker run --detach -it --name "$(basename `pwd`)-agentbox" -v "$PWD:/workspace"  --env-file <(env | grep API_KEY)  -v "$(basename `pwd`)-agentbox-nix:/nix"  agentbox:latest
 ```
 
 Windows PowerShell 5:
@@ -73,31 +83,20 @@ Remove-Item $envFile -ErrorAction SilentlyContinue
 > `API_KEY` in their name to the image ; for safety , you might want to change
 > that
 
-On Windows and macOS, the snippet omits `AGENT_UID` and `AGENT_GID`; Docker
+The macOS and Windows snippets omit `AGENT_UID` and `AGENT_GID`; Docker
 Desktop and podman machine map bind-mount ownership themselves. On Apple
 Silicon, run an `arm64` image: build one locally with
 `PLATFORMS=linux/arm64 ./scripts/build.sh`, or pull a multi-architecture tag
 (`docker buildx imagetools inspect <image>` lists its platforms). Note that
 `elio` ships x86_64 binaries only, so it has no shim on arm64.
 
-Podman is a drop-in for the snippets above on Linux: use a fully qualified
-image name (e.g. `docker.io/fjolsvin/agentbox:latest`) to skip the registry
-prompt, and append `:z` to the workspace mount on SELinux distros
-(`-v "$PWD:/workspace:z"`). Prefer a rootful setup (`podman machine set
---rootful` on macOS): the container must start as root and remap the agent
-user onto the workspace owner, which rootless mode cannot do.
-
-Attach a shell as the unprivileged `agent` user (its UID/GID match the
-workspace owner thanks to `AGENT_UID`/`AGENT_GID`):
-
-```bash
-docker exec -u agent -it "$(basename `pwd`)-agentbox" bash -l
-```
-
-Root shells (without `-u agent`) work too, and `/workspace` is whitelisted in
-git's `safe.directory`, so `git` and `nix develop` work there as root. Prefer
-the agent user for daily use: harnesses first-installed from a root shell land
-in the agent user's Nix profile as root-owned files.
+With Podman (rootful) the Linux snippet works via `podman run` with two
+adjustments: use a fully qualified image name (`localhost/agentbox:latest`
+for local builds) to skip the registry prompt, and append `:z` to the
+workspace mount on SELinux distros (`-v "$PWD:/workspace:z"`). Avoid rootless
+mode: the container must start as root and remap the agent user onto the
+workspace owner, which rootless cannot do. On macOS, switch the machine to
+rootful with `podman machine set --rootful`.
 
 > The snippets give each project its own `/nix` volume. Do not share one named
 > `/nix` volume between concurrently running containers: every container runs
@@ -116,15 +115,20 @@ in the agent user's Nix profile as root-owned files.
 Linux/macOS Bash:
 
 ```bash
-docker exec -it "$(basename `pwd`)-agentbox" bash -l
+docker exec -u agent -it "$(basename `pwd`)-agentbox" bash -l
 ```
 
 Windows PowerShell 5:
 
 ```powershell
 $name = "$(Split-Path -Leaf (Get-Location))-agentbox"
-docker exec -it $name bash -l
+docker exec -u agent -it $name bash -l
 ```
+
+Root shells (without `-u agent`) work too, and `/workspace` is whitelisted in
+git's `safe.directory`, so `git` and `nix develop` work there as root. Prefer
+the agent user for daily use: harnesses first-installed from a root shell land
+in the agent user's Nix profile as root-owned files.
 
 - Exiting the shell leaves the container running; open as many concurrent
   shells as you like
@@ -458,7 +462,7 @@ Linux/macOS Bash:
 
 ```bash
 nix flake check path:./nix
-PLATFORMS=linux/amd64 ./scripts/build.sh   # single-arch, loads locally
+PLATFORMS=linux/amd64 ./scripts/build.sh   # single-arch, loads locally (linux/arm64 on Apple Silicon)
 ./scripts/smoke-test.sh agentbox:latest
 ```
 
