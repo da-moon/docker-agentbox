@@ -76,6 +76,18 @@ Remove-Item $envFile -ErrorAction SilentlyContinue
 On Windows, the snippet omits `AGENT_UID` and `AGENT_GID`; Docker Desktop
 handles bind mount permissions differently from Linux.
 
+Attach a shell as the unprivileged `agent` user (its UID/GID match the
+workspace owner thanks to `AGENT_UID`/`AGENT_GID`):
+
+```bash
+docker exec -u agent -it "$(basename `pwd`)-agentbox" bash -l
+```
+
+Root shells (without `-u agent`) work too, and `/workspace` is whitelisted in
+git's `safe.directory`, so `git` and `nix develop` work there as root. Prefer
+the agent user for daily use: harnesses first-installed from a root shell land
+in the agent user's Nix profile as root-owned files.
+
 > The snippets give each project its own `/nix` volume. Do not share one named
 > `/nix` volume between concurrently running containers: every container runs
 > its own nix-daemon, and two daemons on one store database is unsupported and

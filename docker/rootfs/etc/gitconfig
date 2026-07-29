@@ -1,0 +1,5 @@
+# The bind-mounted workspace is owned by the host user (AGENT_UID), so git's
+# dubious-ownership check rejects it for any other account in the container
+# (e.g. a root shell). Whitelist the documented mount point for everyone.
+[safe]
+	directory = /workspace
