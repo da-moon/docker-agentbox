@@ -10,7 +10,11 @@ WORKDIR /tmp/agentbox-build
 COPY nix ./
 COPY scripts ./scripts
 
-RUN nix profile add \
+# filter-syscalls must be off: qemu-user rejects nix's seccomp filter, which
+# breaks both emulated arm64 builds here and nix builds in a container that
+# runs emulated (e.g. the amd64 image on Apple Silicon).
+RUN printf '%s\n' 'filter-syscalls = false' >> /etc/nix/nix.conf \
+    && nix profile add \
       --profile /nix/var/nix/profiles/agentbox \
       --no-write-lock-file \
       .#agentbox-base \
@@ -25,6 +29,8 @@ RUN nix profile add \
     && rm -rf /tmp/agentbox-build /root/.cache/nix \
     && nix-store --gc
 
+# /etc/nix/nix.conf is a base-image symlink into the store; replace it with a
+# real file, else the config lands in a store path the gc below then deletes.
 RUN for account_file in passwd group shadow gshadow; do \
       if [ -e "/etc/${account_file}" ]; then \
         cp --dereference --preserve=mode,ownership "/etc/${account_file}" "/tmp/${account_file}"; \
@@ -42,8 +48,10 @@ RUN for account_file in passwd group shadow gshadow; do \
       agent \
     && mkdir -p /workspace /run \
     && chown agent:agent /workspace /home/agent \
+    && rm -f /etc/nix/nix.conf \
     && printf '%s\n' \
       'experimental-features = nix-command flakes' \
+      'filter-syscalls = false' \
       'sandbox = false' \
       'build-users-group = nixbld' \
       'allowed-users = *' \

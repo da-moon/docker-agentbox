@@ -73,8 +73,19 @@ Remove-Item $envFile -ErrorAction SilentlyContinue
 > `API_KEY` in their name to the image ; for safety , you might want to change
 > that
 
-On Windows, the snippet omits `AGENT_UID` and `AGENT_GID`; Docker Desktop
-handles bind mount permissions differently from Linux.
+On Windows and macOS, the snippet omits `AGENT_UID` and `AGENT_GID`; Docker
+Desktop and podman machine map bind-mount ownership themselves. On Apple
+Silicon, run an `arm64` image: build one locally with
+`PLATFORMS=linux/arm64 ./scripts/build.sh`, or pull a multi-architecture tag
+(`docker buildx imagetools inspect <image>` lists its platforms). Note that
+`elio` ships x86_64 binaries only, so it has no shim on arm64.
+
+Podman is a drop-in for the snippets above on Linux: use a fully qualified
+image name (e.g. `docker.io/fjolsvin/agentbox:latest`) to skip the registry
+prompt, and append `:z` to the workspace mount on SELinux distros
+(`-v "$PWD:/workspace:z"`). Prefer a rootful setup (`podman machine set
+--rootful` on macOS): the container must start as root and remap the agent
+user onto the workspace owner, which rootless mode cannot do.
 
 Attach a shell as the unprivileged `agent` user (its UID/GID match the
 workspace owner thanks to `AGENT_UID`/`AGENT_GID`):
@@ -447,9 +458,15 @@ Linux/macOS Bash:
 
 ```bash
 nix flake check path:./nix
-./scripts/build.sh
+PLATFORMS=linux/amd64 ./scripts/build.sh   # single-arch, loads locally
 ./scripts/smoke-test.sh agentbox:latest
 ```
+
+By default `scripts/build.sh` builds both `linux/amd64` and `linux/arm64` with
+buildx and pushes (a multi-architecture image is a manifest list, which only
+exists in a registry); point `IMAGE_NAME`/`IMAGE_TAG` at your repository
+first. Building a foreign architecture on Linux needs QEMU binfmt, installed
+once with `docker run --privileged --rm tonistiigi/binfmt --install all`.
 
 Windows PowerShell 5:
 
