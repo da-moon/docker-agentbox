@@ -3,3 +3,4 @@
 /.direnv
 /.env
 /nix/home-flake/flake.lock
+/.serena
