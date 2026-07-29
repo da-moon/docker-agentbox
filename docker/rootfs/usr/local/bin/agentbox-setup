@@ -77,6 +77,20 @@ refresh_base_profile() {
   [ -n "$missing" ] || return 0
   echo "agentbox: refreshing the base profile (missing:${missing})..."
   # root owns /root; the agent home belongs to the unprivileged user.
+  #
+  # Realise the new base before touching the profile, so a failure (e.g. no
+  # network) leaves the existing profile untouched. nix profile add matches
+  # elements by their original flake URL, not by name, so a base baked by an
+  # older image (path:/tmp/agentbox-build) is not replaced by one from
+  # path:/opt/agentbox - it conflicts on overlapping files instead. Remove
+  # the stale element (matched by name) before adding the current one. After
+  # a successful build the add is store-local and cannot lose the profile to
+  # a network error.
+  if ! HOME=/root nix build --no-link --no-write-lock-file "path:/opt/agentbox#agentbox-base"; then
+    echo "agentbox: could not build the current base profile; keeping the existing one" >&2
+    return 0
+  fi
+  HOME=/root nix profile remove --profile "$profile" agentbox-base 2>/dev/null || true
   if HOME=/root nix profile add \
     --profile "$profile" \
     --no-write-lock-file \
