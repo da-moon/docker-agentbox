@@ -32,7 +32,7 @@ for updater in \
   update-kimi-cli.sh \
   update-fff-mcp.sh \
   update-command-code.sh \
-  update-gsd-2.sh; do
+  update-gsd-pi.sh; do
   if ! "${script_dir}/${updater}" "${args[@]}"; then
     status=1
   fi

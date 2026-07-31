@@ -6,16 +6,16 @@
   system,
 }:
 let
-  version = "1.44.0";
+  version = "1.45.0";
 
   releaseBySystem = {
     x86_64-linux = {
       asset = "goose-x86_64-unknown-linux-gnu.tar.gz";
-      hash = "sha256-B/68i09zvf3D7OPTTQ4hsAXzpPQwCPlbhdZTjaj2usE=";
+      hash = "sha256-4NtjisQ3ygpgsMFiL0UyJgjSKNGihSFMO/SP2XYzRqU=";
     };
     aarch64-linux = {
       asset = "goose-aarch64-unknown-linux-gnu.tar.gz";
-      hash = "sha256-2mywBdQhsL3Lg/6Dhrpa6AYO8XrfZGQaaE1PxLnhwV8=";
+      hash = "sha256-yYlBBskOQErIuNZ8YorqKUPdahvIO/2OIXHUgvpD1yo=";
     };
   };
 

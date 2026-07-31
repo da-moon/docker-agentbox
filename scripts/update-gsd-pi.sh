@@ -7,7 +7,7 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 source "${script_dir}/lib/update-common.sh"
 
 readonly flake_dir="${AGENTBOX_FLAKE_DIR:-${repo_root}/nix}"
-readonly package_file="${flake_dir}/packages/gsd-2/default.nix"
+readonly package_file="${flake_dir}/packages/gsd-pi/default.nix"
 readonly registry_url="https://registry.npmjs.org/@opengsd/gsd-pi"
 readonly placeholder_hash="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
@@ -18,7 +18,7 @@ no_build=false
 
 usage() {
   cat <<'EOF'
-Usage: scripts/update-gsd-2.sh [OPTIONS]
+Usage: scripts/update-gsd-pi.sh [OPTIONS]
 
 Options:
   --version VERSION  Update to a specific version instead of latest
@@ -67,7 +67,7 @@ require_commands curl jq nix sed
 
 current_version="$(read_nix_version "$package_file")"
 [ -n "$current_version" ] || {
-  log_error "Could not read the current gsd-2 version"
+  log_error "Could not read the current gsd-pi version"
   exit 2
 }
 
@@ -77,21 +77,21 @@ else
   latest_version="$(curl -fsSL "${registry_url}/latest" | jq -er '.version')"
 fi
 [ -n "$latest_version" ] || {
-  log_error "Could not determine the target gsd-2 version"
+  log_error "Could not determine the target gsd-pi version"
   exit 2
 }
 
 if [ "$check_only" = true ]; then
   if [ "$current_version" = "$latest_version" ]; then
-    log_info "gsd-2 is current (${current_version})"
+    log_info "gsd-pi is current (${current_version})"
     exit 0
   fi
-  log_warn "gsd-2 update available: ${current_version} -> ${latest_version}"
+  log_warn "gsd-pi update available: ${current_version} -> ${latest_version}"
   exit 1
 fi
 
 if [ "$current_version" = "$latest_version" ] && [ "$rehash" = false ]; then
-  log_info "gsd-2 is already at ${current_version}"
+  log_info "gsd-pi is already at ${current_version}"
   exit 0
 fi
 
@@ -117,7 +117,7 @@ sed -i -E \
 sed -i -E \
   '/outputHashBySystem = \{/,/};/ s|^([[:space:]]*x86_64-linux = ")[^"]*(";)|\1'"${placeholder_hash}"'\2|' \
   "$package_file"
-build_output="$(nix build "path:${repo_root}/nix#gsd-2" --no-link 2>&1 || true)"
+build_output="$(nix build "path:${repo_root}/nix#gsd-pi" --no-link 2>&1 || true)"
 output_hash="$(printf '%s\n' "$build_output" | sed -n 's/.*got:[[:space:]]*\(sha256-[A-Za-z0-9+/=]*\).*/\1/p' | head -n1)"
 [ -n "$output_hash" ] || {
   log_error "Could not parse the recomputed x86_64-linux outputHash from the build output"
@@ -129,8 +129,8 @@ sed -i -E \
   "$package_file"
 
 if [ "$no_build" = false ]; then
-  verify_package_build "$flake_dir" gsd-2
+  verify_package_build "$flake_dir" gsd-pi
 fi
 
 committed=true
-log_info "Updated gsd-2: ${current_version} -> ${latest_version}"
+log_info "Updated gsd-pi: ${current_version} -> ${latest_version}"

@@ -51,7 +51,7 @@
               omp = pkgs.callPackage ./packages/omp { inherit system; };
               kimi-cli = pkgs.callPackage ./packages/kimi-cli { inherit system; };
               command-code = pkgs.callPackage ./packages/command-code { inherit system; };
-              gsd-2 = pkgs.callPackage ./packages/gsd-2 { inherit system; };
+              gsd-pi = pkgs.callPackage ./packages/gsd-pi { inherit system; };
               fff-mcp = pkgs.callPackage ./packages/fff-mcp { inherit system; };
             }
             // lib.optionalAttrs (system == "x86_64-linux") {

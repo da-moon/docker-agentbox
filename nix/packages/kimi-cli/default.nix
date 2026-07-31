@@ -6,7 +6,7 @@
   system,
 }:
 let
-  version = "0.30.0";
+  version = "0.31.1";
 
   releasePlatformBySystem = {
     x86_64-linux = "linux-x64";
@@ -15,8 +15,8 @@ let
 
   binaryHashBySystem = {
     # scripts/update-kimi-cli.sh managed hashes.
-    x86_64-linux = "sha256-5vHzG3DzbZF7hjC6Dod5qs4glZLoRpcfWOTiTE2Sl0U=";
-    aarch64-linux = "sha256-vszqH8TATdAW0X5RxqFm2MBFGyoyfc98urL72gbYwZo=";
+    x86_64-linux = "sha256-ppKMagikvqvuyhpDmFzsXBpfvok7j47UJ8fdjmfmOFA=";
+    aarch64-linux = "sha256-QL3gBq8pxVl6mEV+218lAA54qP4zp1qxnnJMEJLMzKA=";
   };
 
   releasePlatform =

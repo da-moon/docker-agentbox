@@ -17,16 +17,16 @@
   system,
 }:
 let
-  pname = "gsd-2";
+  pname = "gsd-pi";
   npmPackage = "@opengsd/gsd-pi";
   npmTarballName = "gsd-pi";
   version = "1.11.0";
   nodejs = nodejs_22;
 
   outputHashBySystem = {
-    # scripts/update-gsd-2.sh managed hashes.
+    # scripts/update-gsd-pi.sh managed hashes.
     aarch64-linux = lib.fakeHash;
-    x86_64-linux = "sha256-lgNOeNUr49CxeGeC0Mw8YOwkLuBMzMhfoET4YPG2gnY=";
+    x86_64-linux = "sha256-+mP+DSp65ZUMQPD3YsBA0sBSMQt9k8nVtiDnR3mKQxk=";
   };
 
   npmDeps = stdenv.mkDerivation {
@@ -48,7 +48,7 @@ let
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
     outputHash =
-      outputHashBySystem.${system} or (throw "Missing gsd-2 npm hash for system: ${system}");
+      outputHashBySystem.${system} or (throw "Missing gsd-pi npm hash for system: ${system}");
 
     buildPhase = ''
       runHook preBuild
